@@ -240,15 +240,18 @@ def load_css():
     }
     /* Section category heading (### หมวดหมู่: ...) */
     .output-section h3 {
-        font-size: 10px !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.13em !important;
-        text-transform: uppercase !important;
-        color: #94a3b8 !important;
-        margin: 24px 0 12px !important;
-        padding: 0 0 0 10px !important;
-        border-left: 3px solid #3b82f6 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.02em !important;
+        text-transform: none !important;
+        color: #1e293b !important;
+        margin: 28px 0 14px !important;
+        padding: 7px 14px !important;
+        background: #f1f5f9 !important;
+        border-left: 4px solid #3b82f6 !important;
         border-bottom: none !important;
+        border-radius: 0 6px 6px 0 !important;
+        display: block !important;
     }
     .output-section h3:first-child { margin-top: 0 !important; }
     .output-section p { color: var(--text-color); margin: 3px 0; font-size: 14px; }
@@ -412,7 +415,7 @@ def load_css():
     .anim-delay-3 { animation-delay: 0.4s; }
 
 
-    /* ─── Animations & Keyframes ──────────────────────────────────────── */
+    /* --- Animations & Keyframes --- */
     @keyframes badgePulse {
         0%   { box-shadow: 0 0 0 0   rgba(16, 185, 129, 0.4); }
         70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
@@ -423,7 +426,6 @@ def load_css():
         50%  { border-color: #10b981;   box-shadow: 0 0 25px rgba(16, 185, 129, 0.2); }
         100% { border-color: #10b98122; box-shadow: 0 4px 20px rgba(0,0,0,.06); }
     }
-    .report-ready { animation: successGlow 2s ease-out; border: 1px solid #10b981 !important; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes overlayFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
     @keyframes modalSlideIn { 0% { opacity: 0; transform: translate(-50%, -44%) scale(0.95); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
@@ -434,35 +436,57 @@ def load_css():
 # Call CSS setup
 load_css()
 
-# ─── API Key Management ───────────────────────────────────────────────────────
+# --- API Key Management ---
 KEY_FILE = ".gemini_key"
+
+# Read cloud secret ONCE at startup (avoids double-warning on local machines)
+_CLOUD_KEY = ""
+try:
+    _CLOUD_KEY = st.secrets.get("GEMINI_KEY", "") or ""
+except Exception:
+    pass  # No secrets.toml — running locally, that's fine
+
 def load_key():
-    if os.path.exists(KEY_FILE):
-        with open(KEY_FILE, "r") as f: return f.read().strip()
+    if _CLOUD_KEY:
+        return _CLOUD_KEY                       # Cloud deployment
+    if os.path.exists(KEY_FILE):               # Local development
+        with open(KEY_FILE, "r") as f:
+            return f.read().strip()
     return ""
 
 def save_key(k):
-    with open(KEY_FILE, "w") as f: f.write(k.strip())
+    try:
+        with open(KEY_FILE, "w") as f:
+            f.write(k.strip())
+    except Exception:
+        pass  # Read-only filesystem (Streamlit Cloud) — ignored
+
+def is_cloud_key():
+    return bool(_CLOUD_KEY)
 
 with st.sidebar:
     st.markdown("<div style='font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>EXCEL AUDITOR</div>", unsafe_allow_html=True)
     st.markdown("<div style='font-size: 12px; font-weight: 500; opacity: 0.5; margin-bottom: 32px;'>Data Recheck Tool</div>", unsafe_allow_html=True)
-
     st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>AI Engine</div>", unsafe_allow_html=True)
     saved_key = load_key()
-    
-    api_key = st.text_input("GEMINI API KEY", type="password", value=saved_key, placeholder="Enter API Key...", label_visibility="collapsed")
-    
-    if api_key:
-        if api_key != saved_key:
-            save_key(api_key)
-        ok, msg = validate_api_key(api_key)
-        if ok:
-            st.caption(f"STATUS: {msg}")
-        else:
-            st.error("Invalid API Key")
+
+    if is_cloud_key():
+        api_key = saved_key
+        st.caption("API Key: configured via Secrets")
     else:
-        st.caption("API Key required to run analysis.")
+        api_key = st.text_input("GEMINI API KEY", type="password", value=saved_key, placeholder="Enter API Key...", label_visibility="collapsed")
+        if api_key:
+            if api_key != saved_key:
+                save_key(api_key)
+            ok, msg = validate_api_key(api_key)
+            if ok:
+                st.caption(f"STATUS: {msg}")
+            else:
+                st.error("Invalid API Key")
+        else:
+            st.caption("API Key required to run analysis.")
+
+
 
 # ─── State Control for Streamlit Re-runs ──────────────────────────────────────
 if "has_loaded" not in st.session_state:
@@ -615,7 +639,7 @@ if st.session_state.get("is_auditing"):
         return text
 
     def render_final_report(full_text):
-        """Parse AI response and render HTML code blocks as st.expander() — the ONLY way that works in Streamlit."""
+        """Parse AI response and render HTML code blocks as st.expander() - the ONLY way that works in Streamlit."""
         # 1. Done banner
         st.markdown(
             '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
@@ -629,14 +653,15 @@ if st.session_state.get("is_auditing"):
             score_val = score_match.group(1)
             score_color = "#22c55e" if float(score_val) >= 90 else "#f59e0b" if float(score_val) >= 70 else "#ef4444"
             summary_text = summary_match_text.group(1).strip() if summary_match_text else ""
-            st.markdown(f"""
-            <div class="score-card">
-                <div class="score-number" style="color:{score_color}">{score_val}%</div>
-                <div class="score-meta">
-                    <div class="score-label">Accuracy Score</div>
-                    <div class="score-summary">{summary_text}</div>
-                </div>
-            </div>""", unsafe_allow_html=True)
+            score_html = (
+                f'<div class="score-card">'
+                f'<div class="score-number" style="color:{score_color}">{score_val}%</div>'
+                f'<div class="score-meta">'
+                f'<div class="score-label">Accuracy Score</div>'
+                f'<div class="score-summary">{summary_text}</div>'
+                f'</div></div>'
+            )
+            st.markdown(score_html, unsafe_allow_html=True)
 
         processed = apply_badges(full_text)
         # Split on <details>...</details> blocks
