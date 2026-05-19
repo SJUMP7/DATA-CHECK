@@ -51,13 +51,15 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
                 "tts", "audio", "vision", "embedding", "tuning",
                 "research", "lyria", "live",
                 "image",    # image-gen models have tiny quota
-                "preview",  # preview models are unstable / low quota
+                "preview",  # preview = unstable / low quota
                 "think",    # thinking models need special config
                 "exp",      # experimental = unreliable quota
+                "3.1",      # Gemini 3.x has very low free-tier quota
+                "3.0",      # same
             ]
             if any(skip in short.lower() for skip in skip_keywords):
                 continue
-            # Only accept stable flash/pro text models
+            # Only accept stable flash/pro text models (prefer 2.x and 1.5)
             if any(k in short for k in ["flash", "pro"]):
                 available.append(short)
     except Exception:
@@ -388,9 +390,40 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
             yield "\n\n[SYSTEM] All models busy. Waiting 10s for quota reset before final attempt...\n"
             time.sleep(10)
 
-    # If all fail after all attempts
-    summary = " | ".join(all_errors[-5:]) # Show last 5 errors only for readability
-    yield f"\n\n**Error: Quota Exceeded across all models.**\nDetails: {summary}\n\nPlease wait 1 minute and try again."
+    # If all fail after all attempts — show clean user-friendly message
+    # Classify what went wrong
+    quota_errors = [e for e in all_errors if "429" in e or "RESOURCE_EXHAUSTED" in e]
+    invalid_errors = [e for e in all_errors if "INVALID_ARGUMENT" in e or "API_KEY_INVALID" in e]
+    not_found_errors = [e for e in all_errors if "404" in e or "NOT_FOUND" in e]
+
+    if invalid_errors:
+        yield (
+            "\n\n**API Key ไม่ถูกต้อง**\n\n"
+            "กรุณาตรวจสอบ API Key ในแถบด้านซ้าย:\n"
+            "- ต้องขึ้นต้นด้วย `AIza`\n"
+            "- ไม่มีช่องว่างหรืออักขระพิเศษ\n"
+            "- ได้รับจาก [Google AI Studio](https://aistudio.google.com/app/apikey) เท่านั้น"
+        )
+    elif quota_errors and not_found_errors:
+        yield (
+            "\n\n**โควต้า API หมดสำหรับวันนี้**\n\n"
+            "โมเดล AI ทุกตัวที่มีสิทธิ์ใช้งานถูกใช้ครบโควต้ารายวันแล้วครับ\n\n"
+            "**วิธีแก้ไข:**\n"
+            "1. รอถึงพรุ่งนี้ (โควต้าจะ Reset อัตโนมัติ)\n"
+            "2. ใช้ API Key จาก Gmail บัญชีอื่น\n"
+            "3. เปิดใช้ Pay-as-you-go บน Google AI Studio เพื่อปลดล็อกโควต้า"
+        )
+    elif quota_errors:
+        yield (
+            "\n\n**โควต้า API หมดชั่วคราว (429)**\n\n"
+            "กรุณารอ 1-2 นาที แล้วลองใหม่อีกครั้งครับ"
+        )
+    else:
+        yield (
+            "\n\n**ไม่สามารถเชื่อมต่อ AI ได้**\n\n"
+            "API Key นี้อาจไม่รองรับโมเดลที่จำเป็น\n"
+            "ลองสร้าง API Key ใหม่จาก Google AI Studio ครับ"
+        )
 
 
 # ─── EXCEL GENERATION ENGINE [IN TEST] ────────────────────────────────────────
