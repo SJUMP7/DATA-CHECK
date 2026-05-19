@@ -316,7 +316,9 @@ def load_css():
         display: block !important;
     }
     .output-section h3:first-child { margin-top: 0 !important; }
-    .output-section p { color: var(--text-color); margin: 3px 0; font-size: 14px; }
+    .output-section p { color: var(--text-color); margin: 7px 0; font-size: 14px; }
+    .output-section li { color: var(--text-color); margin: 5px 0; font-size: 14px; }
+    .output-section ul, .output-section ol { margin: 6px 0 10px 0; padding-left: 20px; }
     .output-section strong { color: var(--text-color); }
     .output-section hr { border: none; border-top: 1px solid #f1f5f9; margin: 18px 0; }
     /* Table */
@@ -729,6 +731,7 @@ if st.session_state.get("is_auditing"):
     render_modal(5, "Initializing AI Engine...")
     
     def apply_badges(text):
+        import re as _re
         # Restore our specialized UI tags
         text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
         text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
@@ -746,6 +749,9 @@ if st.session_state.get("is_auditing"):
         text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
         if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
             text += "\n\n</div>\n\n"
+        # ── Spacing fix: ensure blank line before each bullet so Streamlit
+        #    renders them as separate <p> elements instead of one crammed block
+        text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
         return text
 
     def render_final_report(full_text):
