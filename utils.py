@@ -385,10 +385,8 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
                 all_errors.append(f"{model_name}: {err}")
                 
                 if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                    # Free tier: per-minute quota resets every 60s.
-                    # Try next model first; if all exhausted we wait below.
-                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Switching model...\n"
-                    time.sleep(3)
+                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Trying next...\n"
+                    time.sleep(2)
                 elif "400" in err and "token count" in err.lower():
                     yield f"\n\n[SYSTEM] Data too large for {model_name} (400). Trying next...\n"
                 elif "404" in err:
@@ -398,11 +396,8 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
                 continue
         
         if attempt < max_retries_per_run - 1:
-            # All models hit 429 — wait 65s for per-minute quota window to reset
-            quota_hits = [e for e in all_errors if "429" in e or "RESOURCE_EXHAUSTED" in e]
-            wait_sec = 65 if quota_hits else 10
-            yield f"\n\n[SYSTEM] All models busy. Waiting {wait_sec}s for quota reset before retrying...\n"
-            time.sleep(wait_sec)
+            yield "\n\n[SYSTEM] All models busy. Waiting 10s before retrying...\n"
+            time.sleep(10)
 
     # If all fail after all attempts — show clean user-friendly message
     # Classify what went wrong
