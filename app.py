@@ -523,15 +523,35 @@ with col2:
 _, focus_col, _ = st.columns([0.5, 5, 0.5])
 with focus_col:
     st.markdown(f'<div class="unified-card {anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl">Audit Focus & Scope</div>', unsafe_allow_html=True)
-    focus_options = [
+    individual_options = [
         "Net Price & Extra Beds",
         "Cancellation Policy",
         "Child Policy",
         "Period & Seasons",
         "Meals & Info",
-        "All-in-One Full Scan"
     ]
-    selected_focus = st.multiselect("Select what you want to audit", options=focus_options, default=["All-in-One Full Scan"], label_visibility="collapsed")
+    all_in_one = "All-in-One Full Scan"
+    focus_options = individual_options + [all_in_one]
+
+    # Initialize session state for focus tracking
+    if "prev_focus" not in st.session_state:
+        st.session_state.prev_focus = [all_in_one]
+
+    selected_focus = st.multiselect("Select what you want to audit", options=focus_options, default=st.session_state.prev_focus, label_visibility="collapsed")
+
+    # Smart exclusive logic: All-in-One vs individual options
+    prev = st.session_state.prev_focus
+    if all_in_one in selected_focus and all_in_one not in prev:
+        # User just added All-in-One → clear individual selections
+        selected_focus = [all_in_one]
+        st.session_state.prev_focus = selected_focus
+        st.rerun()
+    elif all_in_one in selected_focus and any(o in selected_focus for o in individual_options) and any(o not in prev for o in selected_focus if o != all_in_one):
+        # User added an individual option while All-in-One was active → remove All-in-One
+        selected_focus = [o for o in selected_focus if o != all_in_one]
+        st.session_state.prev_focus = selected_focus
+        st.rerun()
+    st.session_state.prev_focus = selected_focus
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
