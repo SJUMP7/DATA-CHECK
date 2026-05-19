@@ -222,17 +222,13 @@ Process:
    2.12 Col V (promo_code): Code Promotion / E.B xx DAYS, LONG STAY OFFER
    2.13 Col W (promo_note): ใส่เฉพาะ Condition สำคัญโดยเฉพาะ MIN. xx NIGHTS, COMPULSORY NEW YEAR GALA DINNER, NOT ALLOWED CHECK OUT 
    2.14 Col X (room_allotment): Free Sales, On Request, หรือ ตัวเลข (หากไม่มีเว้นว่าง)
-   2.15 Col AA (cancellation_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้ (รักษาโค้ดสีไว้):
+   2.15 Col AA (cancellation_policy): ใช้รูปแบบนี้เท่านั้น (ใช้ • แทน <ul><li> ห้ามใช้ HTML list tags):
          CANCELLATION : LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD<br>
-         <ul style="list-style-type: disc;">
-         <li>Cancellation made (policy)</li>
-         <li><span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : (policy)</li>
-         </ul>
-         <span style="color: red; font-weight: bold;">*Remark</span> : (ถ้ามี)
-         [FORMAT TOLERANCE RULE - CRITICAL]: เมื่อตรวจ Col AA ให้ตรวจเฉพาะ เนื้อหา/ตัวเลข/วัน ว่าถูกต้องตามสัญญาหรือไม่
-         หาก Policy ถูกต้องตามสัญญา ห้าม flag FAIL แม้ HTML structure จะต่างจาก Pattern บ้าง
-         เช่น ใช้ bullet แทน plain text, ตัด/เพิ่ม line break, รวมหรือแยก NO-SHOW ต่างจาก Pattern
-         ให้ flag REVIEW พร้อมระบุว่า "format อาจต่างจาก standard" แทน FAIL
+         • Cancellation made (policy)<br>
+         • <span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : (policy)<br>
+         <span style="color: red; font-weight: bold;">*Remark</span> : (ถ้ามี หากไม่มีตัดออก)
+         [CONTENT ONLY RULE]: ตรวจสอบเฉพาะ เนื้อหา/ตัวเลข/วัน ว่าถูกต้องตามสัญญา
+         ห้าม flag FAIL แม้ format bullet จะต่างกันเล็กน้อย ให้ flag REVIEW แทนหากเนื้อหาถูกแต่ format ต่าง
    2.16 Col AC (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
    2.17 Col AD (child_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
         <span style="color: green; font-weight: bold;">Room rate includes ABF for xx persons</span><br>
