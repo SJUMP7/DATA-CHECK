@@ -15,6 +15,7 @@ def load_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    html { scroll-behavior: smooth !important; }
     html,body,[class*="css"]{font-family:'Inter',sans-serif!important}
 
     /* Background & Main Structure */
@@ -638,6 +639,9 @@ if st.session_state.get("is_auditing"):
 
     render_modal(5, "Initializing AI Engine...")
     
+    # After modal finishes, it will be cleared. We can inject a placeholder at the top 
+    # to show a 'Scroll Down' prompt if the user is still at the top.
+    top_notice_placeholder = st.empty()
     def apply_badges(text):
         # Restore our specialized UI tags
         text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
@@ -665,6 +669,13 @@ if st.session_state.get("is_auditing"):
             '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
             unsafe_allow_html=True
         )
+        
+        # Auto-scroll and visual cues
+        st.toast("Audit Process Completed Successfully")
+        
+        # Streamlit Cloud blocks JS parent scrolling due to iframe sandboxing (CORS).
+        # We place a native anchor here so we can link to it from above if needed.
+        st.markdown('<a id="audit-result-section"></a>', unsafe_allow_html=True)
 
         # 2. Auto-detect score from AI text and render as score card
         score_match = re.search(r'\u0e04\u0e30\u0e41\u0e19\u0e19\u0e04\u0e27\u0e32\u0e21\u0e16\u0e39\u0e01\u0e15\u0e49\u0e2d\u0e07.*?(\d+(?:\.\d+)?)\s*%', full_text)
@@ -738,6 +749,16 @@ if st.session_state.get("is_auditing"):
         
         render_modal(100, "Audit Complete")
         modal_placeholder.empty()
+        
+        # Inject jump button at the top
+        top_notice_placeholder.markdown(
+            '<div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(16,185,129,0.1);">'
+            '<div style="font-size: 16px; font-weight: 800; color: #047857; margin-bottom: 12px;">✅ ประมวลผลเสร็จสมบูรณ์!</div>'
+            '<a href="#audit-result-section" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">👇 คลิกเพื่อเลื่อนลงไปดู Report ด้านล่าง 👇</a>'
+            '</div>', 
+            unsafe_allow_html=True
+        )
+        
         report_placeholder.empty()
         render_final_report(full_response)
     except Exception as e:
