@@ -44,7 +44,6 @@ _FALLBACK_MODELS = [
 def _get_client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
-@st.cache_data(show_spinner=False, ttl=3600)
 def detect_available_model(api_key: str) -> tuple[str, list[str]]:
     client = _get_client(api_key)
     available: list[str] = []
@@ -59,7 +58,7 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
             if any(k in short for k in ["flash", "pro"]):
                 available.append(short)
     except Exception:
-        pass
+        return "", [] # API Key is invalid or network error
 
     # Prefer models with HUGE context windows (1M+)
     preferred_order = [
@@ -77,7 +76,7 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
         if m in available: return m, available
 
     if available: return available[0], available
-    return "gemini-2.0-flash", _FALLBACK_MODELS
+    return "", []
 
 def validate_api_key(api_key: str) -> tuple[bool, str]:
     if not api_key: return False, "No API key provided."
