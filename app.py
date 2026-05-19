@@ -583,7 +583,7 @@ if _audit_done:
     _left, _right = st.columns([6, 1])
     with _right:
         if st.button("New Audit", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload"]:
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel"]:
                 st.session_state.pop(key, None)
             st.rerun()
 
@@ -836,11 +836,23 @@ if st.session_state.get("is_auditing"):
         render_modal(100, "Audit Complete")
         modal_placeholder.empty()
         
-        # Mark audit as done — this will collapse the upload expander on rerun
-        st.session_state.audit_done = True
-        st.session_state.is_auditing = False
-        st.session_state._audit_result = full_response
-        st.rerun()
+        # Detect if the response is an error (quota exceeded, invalid key, etc.)
+        _is_error = any(kw in full_response for kw in [
+            "API Key ไม่ถูกต้อง", "โควต้า API", "ไม่สามารถเชื่อมต่อ",
+            "RESOURCE_EXHAUSTED", "INVALID_ARGUMENT", "API_KEY_INVALID"
+        ])
+        
+        if _is_error:
+            # Show error inline — keep upload section visible so user can retry
+            report_placeholder.empty()
+            st.session_state.is_auditing = False
+            st.error(full_response.replace("**", "").strip())
+        else:
+            # Successful audit — collapse upload and show report
+            st.session_state.audit_done = True
+            st.session_state.is_auditing = False
+            st.session_state._audit_result = full_response
+            st.rerun()
         
     except Exception as e:
         modal_placeholder.empty()
@@ -906,6 +918,6 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
     _, reset_btn, _ = st.columns([1.5, 3, 1.5])
     with reset_btn:
         if st.button("RESET / NEW UPLOAD", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus"]:
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel"]:
                 st.session_state.pop(key, None)
             st.rerun()
