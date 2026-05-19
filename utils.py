@@ -39,31 +39,43 @@ _FALLBACK_MODELS = [
 def _get_client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
-def detect_available_model(api_key: str) -> tuple[str, list[str]]:
+@st.cache_data(show_spinner=False, ttl=600)  # Cache model list for 10 min to save quota
+def _cached_model_list(api_key: str) -> list[str]:
+    """Returns list of available model short-names. Cached 10 min to avoid wasting RPM."""
     client = _get_client(api_key)
     available: list[str] = []
     try:
         for m in client.models.list():
             name = getattr(m, "name", "") or ""
             short = name.replace("models/", "")
-            # Filter out non-text / preview / low-quota / specialized models
-            skip_keywords = [
-                "tts", "audio", "vision", "embedding", "tuning",
-                "research", "lyria", "live",
-                "image",    # image-gen models have tiny quota
-                "preview",  # preview = unstable / low quota
-                "think",    # thinking models need special config
-                "exp",      # experimental = unreliable quota
-                "3.1",      # Gemini 3.x has very low free-tier quota
-                "3.0",      # same
-            ]
-            if any(skip in short.lower() for skip in skip_keywords):
-                continue
-            # Only accept stable flash/pro text models (prefer 2.x and 1.5)
-            if any(k in short for k in ["flash", "pro"]):
-                available.append(short)
+            available.append(short)
     except Exception:
+        pass
+    return available
+
+def detect_available_model(api_key: str) -> tuple[str, list[str]]:
+    """Uses cached model list to avoid burning quota on every call."""
+    all_names = _cached_model_list(api_key)
+    if not all_names:
         return "", []  # API Key is invalid or network error
+
+    # Filter out non-text / preview / low-quota / specialized models
+    skip_keywords = [
+        "tts", "audio", "vision", "embedding", "tuning",
+        "research", "lyria", "live",
+        "image",    # image-gen models have tiny quota
+        "preview",  # preview = unstable / low quota
+        "think",    # thinking models need special config
+        "exp",      # experimental = unreliable quota
+        "3.1",      # Gemini 3.x has very low free-tier quota
+        "3.0",      # same
+    ]
+    available = [
+        short for name in all_names
+        for short in [name.replace("models/", "")]
+        if any(k in short for k in ["flash", "pro"])
+        and not any(skip in short.lower() for skip in skip_keywords)
+    ]
 
     # Prefer stable, high-quota models
     preferred_order = [
@@ -355,7 +367,7 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
             unique_models.append(m)
 
     all_errors = []
-    max_retries_per_run = 2 # Try the whole list twice if needed
+    max_retries_per_run = 2  # Try the whole list twice if needed
     
     for attempt in range(max_retries_per_run):
         for model_name in unique_models:
@@ -370,25 +382,27 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
                 return  # success — stop trying other models
             except Exception as e:
                 err = str(e)
-                # Save error for summary
                 all_errors.append(f"{model_name}: {err}")
                 
                 if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Trying next in 2s...\n"
-                    time.sleep(2) 
+                    # Free tier: per-minute quota resets every 60s.
+                    # Try next model first; if all exhausted we wait below.
+                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Switching model...\n"
+                    time.sleep(3)
                 elif "400" in err and "token count" in err.lower():
                     yield f"\n\n[SYSTEM] Data too large for {model_name} (400). Trying next...\n"
-                    continue
                 elif "404" in err:
-                    # Just move to next model
-                    pass
+                    pass  # Just move to next model silently
                 
                 yield "[RESET_STREAM]"
                 continue
         
         if attempt < max_retries_per_run - 1:
-            yield "\n\n[SYSTEM] All models busy. Waiting 10s for quota reset before final attempt...\n"
-            time.sleep(10)
+            # All models hit 429 — wait 65s for per-minute quota window to reset
+            quota_hits = [e for e in all_errors if "429" in e or "RESOURCE_EXHAUSTED" in e]
+            wait_sec = 65 if quota_hits else 10
+            yield f"\n\n[SYSTEM] All models busy. Waiting {wait_sec}s for quota reset before retrying...\n"
+            time.sleep(wait_sec)
 
     # If all fail after all attempts — show clean user-friendly message
     # Classify what went wrong
