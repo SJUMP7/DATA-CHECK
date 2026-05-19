@@ -1,516 +1,258 @@
-import io
-import time
 import pandas as pd
-import streamlit as st
+import pdfplumber
+import time
+import google.generativeai as genai
 import json
-import re
-from datetime import datetime
-from google import genai
-from google.genai import types
 
-# ─── EXCEL SCHEMA DEFINITION [IN TEST] ────────────────────────────────────────
-# This list defines the exact column order required for the system upload.
-EXCEL_UPLOAD_COLUMNS = [
-    '_id', 'hotel_id', 'room_id', 'status', 'created_date', 'edited_date',
-    'start_date', 'end_date', 'refundable', 'abf', 'contract_type', 'cutoff_date',
-    'hotel_supplier', 'important_message', 'min_nights_stay', 'min_advance_days',
-    'net_price', 'net_price_emerald', 'net_price_ruby', 'net_price_topaz',
-    'promo_book_till', 'promo_code', 'promo_note', 'room_allotment', 'all_inclusive',
-    'baby_cot', 'cancellation_policy', 'cancellation_policy_net', 'early_check_in',
-    'child_policy', 'child_share_bed_abf', 'child_extra_bed_abf', 'extra_bed_abf',
-    'extra_bed_no_abf', 'full_board', 'half_board', 'hotel_extra_fees', 'room_name',
-    'hotel_transfer', 'late_check_out', 'meals_and_info', 'tags', 'action'
-]
-
-# ─── Fallback model list ───────────────────────────────────────
-# Expanded with models from user logs to maximize chances of finding an open quota
-_FALLBACK_MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-2.0-flash-001",
-    "gemini-2.0-flash-lite-001",
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-flash-latest",
-    "gemini-flash-lite-latest",
-    "gemini-pro-latest",
-    "gemini-1.5-pro",
-    "gemini-1.5-pro-latest",
-]
-
-@st.cache_resource(show_spinner=False)
-def _get_client(api_key: str) -> genai.Client:
-    return genai.Client(api_key=api_key)
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def detect_available_model(api_key: str) -> tuple[str, list[str]]:
-    client = _get_client(api_key)
-    available: list[str] = []
+def extract_pdf_text(pdf_file):
+    """
+    Extracts text from an uploaded PDF file.
+    """
+    text = ""
     try:
-        for m in client.models.list():
-            name = getattr(m, "name", "") or ""
-            short = name.replace("models/", "")
-            # Filter out models not suitable for heavy data tasks or with small context
-            skip_keywords = ["tts", "audio", "vision", "embedding", "tuning", "research", "banana", "lyria", "live"]
-            if any(skip in short.lower() for skip in skip_keywords):
-                continue
-            if any(k in short for k in ["flash", "pro"]):
-                available.append(short)
-    except Exception:
-        pass
+        with pdfplumber.open(pdf_file) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        return text
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
 
-    # Prefer models with HUGE context windows (1M+)
-    preferred_order = [
-        "gemini-2.0-flash", 
-        "gemini-1.5-flash", 
-        "gemini-2.0-flash-lite", 
-        "gemini-1.5-pro",
-        "gemini-1.5-flash-8b"
-    ]
-    for preferred in preferred_order:
-        if preferred in available:
-            return preferred, available
+def extract_excel_data(excel_file):
+    """
+    Reads the Excel file and returns a pandas DataFrame.
+    """
+    try:
+        # Read the excel file
+        df = pd.read_excel(excel_file)
+        return df
+    except Exception as e:
+        return None
 
-    for m in _FALLBACK_MODELS:
-        if m in available: return m, available
-
-    if available: return available[0], available
-    return "gemini-2.0-flash", _FALLBACK_MODELS
-
-def validate_api_key(api_key: str) -> tuple[bool, str]:
-    if not api_key: return False, "No API key provided."
-    model, available = detect_available_model(api_key)
-    if model: return True, f"Connected ✓ Model: {model}"
-    if available: return True, f"Connected (models found: {len(available)})"
-    return False, "API key invalid or Gemini API not enabled."
-
-def _excel_col_name(n):
-    """Convert 0-indexed column number to Excel letter (0 -> A, 1 -> B, 26 -> AA)."""
-    name = ""
-    while n >= 0:
-        name = chr(n % 26 + 65) + name
-        n = n // 26 - 1
-    return name
-
-def convert_excel_to_csv_with_letters(excel_bytes: bytes, focus_list: list = None) -> str:
-    """Read Excel, drop empty/unused columns, and return CSV string where headers include Excel column letters."""
-    df = pd.read_excel(excel_bytes, header=None)
-    if df.empty: return ""
+def mock_audit_process(pdf_text, df):
+    """
+    A mock rule engine that simulates analyzing the data.
+    In the future, this function will call the LLM API.
+    """
+    # Simulate processing time
+    time.sleep(2)
     
-    letters = [_excel_col_name(i) for i in range(len(df.columns))]
-    headers = [f"{letters[i]}: {str(val)}" if pd.notna(val) else letters[i] for i, val in enumerate(df.iloc[0])]
-    df.columns = headers
-    df = df.iloc[1:].reset_index(drop=True)
-    
-    # --- Token Optimizations ---
-    df = df.dropna(axis=0, how='all')
-    df = df.dropna(axis=1, how='all')
-    
-    # If focus mode is active, we can drop EVERYTHING not related to the focus
-    if focus_list and "All-in-One Full Scan" not in focus_list:
-        needed_prefixes = {'AL', 'M'} # Always keep Room Name and Hotel Supplier
-        mapping = {
-            "Net Price & Extra Beds": ['Q', 'AE', 'AF', 'AG', 'AI', 'AJ'],
-            "Cancellation Policy": ['AA', 'G', 'H'],
-            "Child Policy": ['AD', 'AE', 'AF', 'AG'],
-            "Period & Seasons": ['G', 'H', 'K', 'O', 'P', 'U', 'V', 'W'],
-            "Meals & Info": ['AO', 'AI', 'AJ']
+    total_rows = len(df) if df is not None else 0
+    if total_rows == 0:
+        return {
+            "accuracy": 0,
+            "summary": "ไม่พบข้อมูลในไฟล์ Excel ที่อัปโหลด",
+            "correct_items": [],
+            "wrong_items": [],
+            "confuse_items": []
         }
-        for f in focus_list:
-            if f in mapping:
-                needed_prefixes.update(mapping[f])
         
-        cols_to_keep = []
-        for col in df.columns:
-            prefix = col.split(':')[0].strip()
-            if prefix in needed_prefixes:
-                cols_to_keep.append(col)
-        df = df[cols_to_keep]
-    else:
-        # Default: Drop Col J (ABF) since the prompt says "ไม่ต้องตรวจสอบ"
-        cols_to_keep = [c for c in df.columns if not c.startswith('J:')]
-        df = df[cols_to_keep]
+    # Mock Logic: We'll pretend we checked the data and found some correct and some wrong.
+    # In reality, this requires LLM.
     
-    return df.to_csv(index=False)
-
-def get_recheck_prompt(focus_list: list = None) -> str:
-    focus_instr = ""
-    if focus_list and "All-in-One Full Scan" not in focus_list:
-        focus_instr = f"\n\n[SYSTEM ALERT: STRICT FOCUS MODE ACTIVE]\nYour primary objective is EXCLUSIVELY to audit: **{', '.join(focus_list)}**.\nIgnore other columns unless they are critical for mapping the selected areas. Do not report issues outside these focus areas.\n\n"
-
-    return f"""
-Data Recheck : (100% Full Scan)
-{focus_instr}
-Role: Senior Auditor. 
-Objective: Compare PDF Contract vs Excel Data. 100% Accuracy. 
-Strictly use provided documents only. Report discrepancies precisely.
-
-How to check : 
-1. อ่านไฟล์ PDF ที่ส่งให้ (100% Full Scan) เพื่อเตรียมไว้ตรวจสอบไฟล์ Excel ที่ถูกทำไว้แล้ว
-2. นำข้อมูลในไฟล์ PDF มาตรวจสอบเปรียบเทียบกับไฟล์ Excel (ที่ถูกแปลงเป็น CSV โดยมีชื่อคอลัมน์เช่น G:, H:, Q: กำกับไว้) เพื่อตรวจสอบความถูกต้อง
-3. หาก Full Scan และตรวจสอบเสร็จแล้ว ให้รายงานผล ตามรูปแบบที่ตั้งไว้ให้ผู้ใช้งาน อ่านง่าย
-
-Directives:
-1. Full Scan: Audit every cell. No sampling.
-2. Row Mapping: Map rates (Q, AE-AG) to room type (AL) strictly.
-3. Exceptions: Search for "excluding", "not including", "only" in PDF.
-4. Child Logic: Under 12 = 11.99, 5-11 = 5-11.99.
-5. Cancellation: Match days in AA to seasons in PDF.
-6. Discount & Extra Person: For Early Booking/Promotions, ALWAYS check if the contract states "apply with extra person charge" or similar. If YES, Extra Bed (AG) and Child Extra Bed (AF) MUST be discounted. DO NOT flag this as a FAIL.
-7. GROUPING (NON-NEGOTIABLE RULE):
-   - BEFORE (WRONG - never do this):
-     | AO (Room A, Peak) | 3 nights | 7 nights | ... |
-     | AO (Room B, Peak) | 3 nights | 7 nights | ... |
-     | AO (Room C, Peak) | 3 nights | 7 nights | ... |
-   - AFTER (CORRECT - always do this):
-     | AO (ทุก Room Type, Peak Season) | 3 nights | 7 nights | ... |
-   If 2 or more rows have the SAME column, SAME error, SAME fix — MERGE into ONE row. Write location as "ทุก Room Type" or "Row 5-15" etc.
-8. IGNORE FORMATTING & DECIMALS (CRITICAL): Do NOT flag an error if the difference is purely numerical formatting. For example: `1600` is EXACTLY THE SAME as `1600.00`. `7352.5` is EXACTLY THE SAME as `7352.50`. If the factual numeric value is identical, you MUST consider it CORRECT. Do NOT flag it as FAIL. Do NOT ask the user to "ปรับรูปแบบตัวเลขให้เป็นทศนิยม 2 ตำแหน่ง".
-10. HTML Code Block Placement (CRITICAL): For policy columns (AA, AD, AO), when you find an error:
-   - In the table row, write ONLY a plain-text summary in the "ข้อมูลที่ถูกต้อง" column.
-   - AFTER the table ends (not inside a cell!), add the HTML dropdown on its own line like this:
-
----
-HTML สำหรับแก้ไข [Column Name] — [Room/Period]:
-
-<details>
-<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
-
-```html
-[INSERT FULL HTML CODE HERE]
-```
-
-</details>
-
-10. Long Stay Offer Rules: If the file shows Long Stay Offer with MAX 7 NIGHTS (e.g., #MIN. 4 NIGHTS get 10% or #MIN. 7 NIGHTS get 15%), this is the COMPANY'S STANDARD POLICY. Do NOT flag as FAIL. Only flag REVIEW with note "ตรวจสอบ Long Stay Offer กับสัญญาอีกครั้ง" if the number of nights or discount percentage differs from the PDF.
-11. MUST COMPLETE: You MUST audit and report ALL columns and ALL rows. Do NOT stop early. Do NOT say "etc" or abbreviate. If data is large, continue until every row is covered.
-
-Process:
-1. นำข้อมูลไฟล์ PDF มาตรวจสอบในไฟล์ Excel
-2. Column Mapping : ข้อมูลพื้นฐาน Excel (ชื่อคอลัมน์ใน CSV จะมีตัวอักษรกำกับ เช่น G:, H:)
-   2.1 Col G (start_date): วันที่เริ่มต้น Period (Format: วัน/เดือน/ปี)
-   2.2 Col H (end_date): วันที่สิ้นสุด Period (Format: วัน/เดือน/ปี)
-   2.3 Col I (refundable): บังคับเป็น FALSE เท่านั้น (ห้ามตรวจสอบกับสัญญา และห้ามรายงานผลในส่วนนี้เด็ดขาด)
-   2.4 Col J (abf): ไม่ต้องตรวจสอบ
-   2.5 Col K (contract_type): ระบุค่าเป็นค่าใดค่าหนึ่ง: Main Contract, Early Bird, Promotion, POR
-   2.6 Col L (cutoff_date): ตัวเลข ตามสัญญา
-   2.7 Col M (hotel_supplier): ชื่อโรงแรม 
-   2.8 Col O (min_nights_stay): ตัวเลขจำนวนคืน ตามสัญญา (หากไม่มีเว้นว่าง)
-   2.9 Col P (min_advance_days): ตัวเลข ตรวจสอบเฉพาะ Early Bird
-   2.10 Col Q (net_price): ตัวเลขตามราคาสัญญา
-   2.11 Col U (promo_book_till): วันที่สิ้นสุด Booking (Format: ปี/เดือน/วัน 23:59:59) 
-   2.12 Col V (promo_code): Code Promotion / E.B xx DAYS, LONG STAY OFFER
-   2.13 Col W (promo_note): ใส่เฉพาะ Condition สำคัญโดยเฉพาะ MIN. xx NIGHTS, COMPULSORY NEW YEAR GALA DINNER, NOT ALLOWED CHECK OUT 
-   2.14 Col X (room_allotment): Free Sales, On Request, หรือ ตัวเลข (หากไม่มีเว้นว่าง)
-   2.15 Col AA (cancellation_policy): จัดรูปแบบข้อความ HTML 
-   2.16 Col AC (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
-   2.17 Col AD (child_policy): จัดรูปแบบข้อความ HTML (Room rate includes..., Maximum Occupancy, Child Sharing Bed, Extra Bed)
-   2.18 Col AE (child_share_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Sharing Bed+ABF 
-   2.19 Col AF (child_extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Extra Bed +ABF 
-   2.20 Col AG (extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Adult Extra Bed +ABF 
-   2.21 Col AI (full_board): ตัวเลข 
-   2.22 Col AJ (half_board): ตัวเลข 
-   2.23 Col AL (room_name): ระบุชื่อห้องพักตามสัญญา “ยืดหยุ่นได้”
-   2.24 Col AO (meals_and_info): รวมข้อมูลเงื่อนไขพิเศษ, โปรโมชั่น, Condition, Meal, Transfer, E.B, Long Stay เป็น HTML (ใช้ตรวจ Terms & Conditions)
-
-Output: รายงานผลเป็นภาษาไทย 100% ด้วยภาษาทางการ (ห้ามใช้อิโมจิ ห้ามใช้เครื่องหมาย ### และห้ามมีคำพูดเกริ่นนำ)
-
-[SECTION_FAIL]
-**พบข้อผิดพลาด**
-
-### หมวดหมู่: [ชื่อคอลัมน์ เช่น Net Price (Q)]
-| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
-|:---|:---|:---|:---|
-| [ตำแหน่ง เช่น ทุก Room Type ใน Peak Season] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
-
-(หากคอลัมน์นี้เป็น AA, AD, หรือ AO คุณ **ต้อง** ใส่โค้ด HTML ตามรูปแบบนี้ด้านล่างตารางเสมอ)
-<details>
-<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
-
-```html
-[โค้ด HTML ที่ถูกต้อง]
-```
-
-</details>
-
----
-
-### หมวดหมู่: [ชื่อคอลัมน์ต่อไป]
-| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
-|:---|:---|:---|:---|
-| [ตำแหน่ง] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
-
-[SECTION_REVIEW]
-**จุดที่ควรตรวจสอบเพิ่มเติม [REVIEW]**
-| สถานะ | ตำแหน่ง | รายละเอียดข้อสงสัย | ข้อแนะนำ |
-|:---|:---|:---|:---|
-| [REVIEW] | **[Col]** | [เหตุผลที่สงสัย] | [สิ่งที่ควรเช็ค] |
-
----
-
-**สรุปผลการตรวจสอบ**
-- **คะแนนความถูกต้อง:** [xx]%
-- **บทสรุป:** [สรุปสั้นๆ 1 ประโยค]
-
----
-
-[SECTION_VERIFIED]
-*** กรณีถูกต้องทั้งหมด: **STATUS: [VERIFIED] ข้อมูลถูกต้องตามสัญญาทุกประการ** ***
-"""
-
-def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, focus_list: list = None):
-    """Streams the analysis from Gemini."""
-    client = _get_client(api_key)
-    prompt = get_recheck_prompt(focus_list)
+    accuracy = 85
+    summary = "พบจุดที่ผิดพลาดเล็กน้อยในส่วนของราคา Early Bird และการตีความ Child Policy กรุณาตรวจสอบรายละเอียดด้านล่าง"
     
-    # Convert Excel to CSV
-    csv_data = convert_excel_to_csv_with_letters(excel_bytes, focus_list)
-    
-    config = types.GenerateContentConfig(
-        temperature=0.2,
-        max_output_tokens=131072,
-    )
-    
-    pdf_part = types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
-    
-    contents = [
-        "Please act as the Data Recheck Auditor. I am providing you with two documents:\n",
-        "1. The original Hotel Contract (PDF)\n",
-        pdf_part,
-        "\n2. The Data Team's Excel File (converted to CSV with Excel Column Letters in headers)\n",
-        csv_data,
-        "\n\n--- INSTRUCTIONS & RULES ---\n",
-        prompt
+    correct_items = [
+        "ตรวจสอบ Mapping วันที่ (Col G, H) ถูกต้องทั้งหมด",
+        "ชื่อประเภทห้องพัก (Col AL) ตรงกับในสัญญา",
+        "ตรวจสอบ Cancellation Policy (Col AA) ส่วนใหญ่ตรงตามเงื่อนไขใน PDF"
     ]
     
-    best_model, all_models = detect_available_model(api_key)
-    if not best_model:
-        models_to_try = _FALLBACK_MODELS
-    else:
-        others = [m for m in all_models if m != best_model]
-        models_to_try = [best_model] + others + _FALLBACK_MODELS
-
-    # Deduplicate
-    seen = set()
-    unique_models = []
-    for m in models_to_try:
-        if m not in seen:
-            seen.add(m)
-            unique_models.append(m)
-
-    all_errors = []
-    max_retries_per_run = 2 # Try the whole list twice if needed
-    
-    for attempt in range(max_retries_per_run):
-        for model_name in unique_models:
-            try:
-                for chunk in client.models.generate_content_stream(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                ):
-                    if chunk.text:
-                        yield chunk.text
-                return  # success — stop trying other models
-            except Exception as e:
-                err = str(e)
-                # Save error for summary
-                all_errors.append(f"{model_name}: {err}")
-                
-                if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Trying next in 2s...\n"
-                    time.sleep(2) 
-                elif "400" in err and "token count" in err.lower():
-                    yield f"\n\n[SYSTEM] Data too large for {model_name} (400). Trying next...\n"
-                    continue
-                elif "404" in err:
-                    # Just move to next model
-                    pass
-                
-                yield "[RESET_STREAM]"
-                continue
-        
-        if attempt < max_retries_per_run - 1:
-            yield "\n\n[SYSTEM] All models busy. Waiting 10s for quota reset before final attempt...\n"
-            time.sleep(10)
-
-    # If all fail after all attempts
-    summary = " | ".join(all_errors[-5:]) # Show last 5 errors only for readability
-    yield f"\n\n**Error: Quota Exceeded across all models.**\nDetails: {summary}\n\nPlease wait 1 minute and try again."
-
-
-# ─── EXCEL GENERATION ENGINE [IN TEST] ────────────────────────────────────────
-
-def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
-    """
-    DIAGNOSTIC & STREAMING: Uses streaming (like Audit) to bypass 404s and lists models on failure.
-    """
-    client = genai.Client(api_key=api_key)
-    
-    contents = [
-        types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-        f"""
-        ACT AS: Senior Hotel Data Specialist.
-        TASK: Extract EVERY rate season, room type, promotion, and policy from the attached PDF into structured data.
-        
-        COLUMN RULES & FORMATTING (MIMIC EXAMPLE STRUCTURE EXACTLY):
-        1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000".
-        2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
-        3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
-        4. HTML FORMATTING REQUIRED (STRICT TEMPLATES): You MUST format cancellation_policy, child_policy, and meals_and_info using these EXACT HTML templates and colors:
-        
-        [cancellation_policy Template]
-        <p><strong>CANCELLATION : [SEASON NAME OR PERIOD]</strong></p>
-        <p>• Cancellation made [policy]</p>
-        <p>• <span style="color: #ff0000;">NO-SHOW/Early Check Out</span> : [policy]</p>
-        <p><span style="color: #ff0000;">*Remark : [details]</span></p>
-        
-        [child_policy Template]
-        <p><span style="color: #008000;"><strong>Room rate includes ABF for [xx] persons</strong></span></p>
-        <p><span style="color: #008000;"><strong>Maximum Occupancy : [XA / XA+XC]</strong></span></p>
-        <p>[policy]</p>
-        <p>in case have 2 Children;</p>
-        <p>if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;</p>
-        <p>1st child [policy]</p>
-        <p>2nd child [policy]</p>
-        <p>Adult [policy]</p>
-        <p><span style="color: #ff0000;"><strong>*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</strong></span></p>
-        
-        [meals_and_info Template]
-        <p><strong>MAIN CONTRACT [Year] : [Period]</strong></p>
-        <br/>
-        <p><span style="color: #ffcc00;"><strong>[ (only for Peak)</strong></span></p>
-        <p><strong>MIN. [XX] NIGHTS during [xx-xx]</strong></p>
-        <p><strong>NOT ALLOWED CHECK OUT on [xx]</strong></p>
-        <p><strong>※ Compulsory [Event Name] on [Date]</strong></p>
-        <p>Adult = [xxx] THB / Child ([age]) = [xxx] THB</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <p><span style="color: #ffcc00;"><strong>]</strong></span></p>
-        <br/>
-        <p><strong>※ MEAL RATES</strong></p>
-        <p>Half Board (Lunch OR Dinner)</p>
-        <p>Full Board (Lunch AND Dinner)</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <br/>
-        <p><strong>※ Early Bird</strong></p>
-        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-        <p>• E.B [xx] Days, get [xx]% discount.</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <br/>
-        <p><strong>※ Long Stay Offer / Minimum Nights Stay Offer</strong></p>
-        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-        <p>• <span style="color: #008000;"><strong>#MIN. [X] NIGHTS</strong></span>, get [xx]% discount</p>
-        <br/>
-        <p><strong>※ Honeymooner / Anniversary</strong></p>
-        
-        5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Extract numbers correctly (e.g. 1400.0 or 3250). 
-        6. PERIOD SPLITTING LOGIC: Split the period into separate rows if conditions change within the season.
-        8. MULTI-ROW EXTRACTION (CRITICAL): You MUST extract EVERY SINGLE combination of room type and rate season (Low, High, Peak, etc.). A standard contract has multiple seasons and multiple rooms. You must output a JSON list with MANY objects (e.g., 20-50 objects), NOT just one. Do not summarize.
-        9. MISSING DATA: For any requested key that you don't find, output "". DO NOT output 0 or FALSE.
-        
-        OUTPUT FORMAT: A JSON LIST of objects.
-        REQUIRED KEYS (Columns G to AP only): {json.dumps(EXCEL_UPLOAD_COLUMNS[6:])}
-        CRITICAL: Return ONLY a valid JSON list. Do not include any markdown formatting, backticks, or conversational text.
-        """
+    wrong_items = [
+        {
+            "issue": "ราคา Net Price (Col Q) ของห้อง Deluxe ในช่วง High Season คำนวณส่วนลด Early Bird ผิด",
+            "should_be": "ควรเป็น 2,500 THB (ลด 10% จากราคาหลัก 2,777 THB)",
+            "action": "แก้ไขตัวเลขใน Excel เป็น 2500"
+        },
+        {
+            "issue": "ข้อมูล Child Policy (Col AD) ขาดเงื่อนไข 'ไม่รวมเตียงเสริม'",
+            "should_be": "Child 5-11.99 years old Sharing Bed + ABF = 500 THB (No extra bed)",
+            "action": "เพิ่มข้อความใน HTML pattern ตาม PDF"
+        }
     ]
     
-    available_models = []
+    confuse_items = [
+        "ส่วนลด Long Stay Offer ระบุว่า 'As per main contract' แต่ในระบบไม่มีการเชื่อมโยงกับสัญญาหลักชัดเจน"
+    ]
+    
+    return {
+        "accuracy": accuracy,
+        "summary": summary,
+        "correct_items": correct_items,
+        "wrong_items": wrong_items,
+        "confuse_items": confuse_items
+    }
+
+def run_gemini_audit(pdf_text, df, api_key):
+    """
+    Runs the actual 100% Full Scan using Gemini API.
+    """
+    genai.configure(api_key=api_key)
+    
+    # ระบบเลือกโมเดลอัตโนมัติ เพื่อป้องกันปัญหา 404 Model Not Found
     try:
-        for m in client.models.list():
-            available_models.append(m.name)
-    except:
-        available_models = ["Could not list models"]
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        if 'models/gemini-1.5-pro' in available_models:
+            model_name = 'gemini-1.5-pro'
+        elif 'models/gemini-1.5-pro-latest' in available_models:
+            model_name = 'gemini-1.5-pro-latest'
+        elif 'models/gemini-1.5-flash' in available_models:
+            model_name = 'gemini-1.5-flash'
+        elif 'models/gemini-pro' in available_models:
+            model_name = 'gemini-pro'
+        else:
+            # ใช้ตัวแรกที่รองรับ
+            model_name = available_models[0].replace('models/', '') if available_models else 'gemini-pro'
+    except Exception:
+        # ถ้าเช็คไม่ได้ให้ตกมาใช้ gemini-1.5-flash ก่อน
+        model_name = 'gemini-1.5-flash'
 
-    last_error = "Unknown Error"
-    # Use the same unique models logic as Audit
-    available_models_list = []
+    model = genai.GenerativeModel(model_name)
+    
+    # Convert DataFrame to a string format that LLM can easily read (CSV format is usually best for tabular data)
+    csv_data = df.to_csv(index=False)
+    
+    prompt = f"""
+    Data Recheck : (100% Full Scan)
+
+    Tone & Persona :
+    ผู้เชี่ยวชาญที่มีความละเอียดสูงด้านการตรวจสอบความถูกต้อง โดยนำสัญญาโรงแรม (PDF) มาตรวจสอบว่า ไฟล์ Excel ทำถูกต้องตามสัญญาโรงแรมหรือไม่ - โดยยึดหลักการตรวจสอบแบบ 100% Full Scan ไม่สุ่มตรวจ มีความละเอียดรอบคอบไม่ประมาท ไม่ละเลยข้อมูลในช่องเล็กๆ และพร้อมรายงานจุดผิดสังเกตทันทีที่ตรวจพบ 
+
+    How to check : 
+    1. อ่านไฟล์ PDF ที่ส่งให้ (100% Full Scan) เพื่อเตรียมไว้ตรวจสอบไฟล์ Excel ที่ถูกทำไว้แล้ว
+    2. นำข้อมูลในไฟล์ PDF มาตรวจสอบเปรียบเทียบกับไฟล์ Excel เพื่อตรวจสอบความถูกต้อง
+    3. หาก Full Scan และตรวจสอบเสร็จแล้ว ให้รายงานผล ตามรูปแบบที่ตั้งไว้ให้ผู้ใช้งาน อ่านง่าย
+
+    Operational Directives (กฎเหล็กในการปฏิบัติงาน):
+    1. 100% Full Scan Only: ห้ามใช้วิธีสุ่มตรวจ (Sampling) หรือดูแค่ส่วนหัว/ท้ายไฟล์เด็ดขาด ต้องตรวจสอบละเอียด "ทุกบรรทัดและทุกช่อง" (Every Row & Cell) 
+    2. Exact Row Mapping (ห้ามสลับบรรทัด): การตรวจสอบราคา (Col Q, AE, AF, AG) ต้อง Map ข้อมูลให้ตรงกับ "ชื่อประเภทห้องพัก" (Room Type - Col AL) ทุกครั้ง ห้ามอ่านข้อมูลเหลื่อมบรรทัดหรือสลับประเภทห้องเด็ดขาด
+    3. Exception Scanning (สแกนหาคำยกเว้นอย่างเข้มงวด): ทุกครั้งที่มีเงื่อนไขโปรโมชั่น, Early Bird, หรือ Long Stay ให้สแกนหาคำว่า "not including", "excluding", "except", "only" ในสัญญา PDF ทันที หากพบข้อยกเว้น (เช่น ไม่รวมเตียงเสริม, ไม่รวมอาหารเช้า) ห้ามเหมารวมว่าส่วนลดนั้นครอบคลุมทั้งหมด
+    4. Double-Check Before Flagging: ก่อนที่จะตัดสินว่าไฟล์ Excel ใส่ข้อมูลผิด (🔴) หรือคำนวณถูก (🟢) โดยเฉพาะเรื่อง 'ส่วนลด' ให้กลับไปอ่านประโยคเงื่อนไขใน PDF ซ้ำเป็นรอบที่ 2 เสมอเพื่อยืนยันความถูกต้อง
+    5. Child Policy Logic : หากสัญญาระบุ Under 12 ให้ใช้เป็น 11.99, ระบุ 5 - 11 years old ควรเป็น 5 - 11.99 years old 
+    6. Discount Logic : 
+    6.1 หาก Column K เป็น Early Bird หรือ Promotion ให้ตรวจสอบการลดราคา Column Q ว่าลดถูกต้องจากราคาหลักไหม 
+    6.2 ***ระวังเงื่อนไขการหักส่วนลดกับ Extra Bed / Child Policy หากสัญญาไม่ระบุให้ลด ห้ามนำส่วนลดไปคำนวณเด็ดขาด***
+    7. Typo Detection: ตรวจสอบตัวสะกดอย่างเข้มงวด รวมถึงการใส่วันที่ที่เป็นไปไม่ได้ (เช่น 31 เมษายน)
+    8. Cancellation : สกัดตัวเลขจำนวนวันยกเลิกออกจากข้อความ HTML (Col AA) และตรวจสอบว่าจำนวนวันที่ระบุ ตรงตามช่วงเวลาฤดูกาลในสัญญา PDF หรือไม่
+    9. MIN. NIGHTS STAY : Column O หากสัญญาระบุว่า Period ไหนมี MIN NIGHTS ให้ตรวจสอบอย่างละเอียด
+    10. ห้ามใช้ความรู้พื้นฐาน หรือมาตรฐานทั่วไปของอุตสาหกรรมโรงแรม (Industry Standard) มาตัดสิน ทุกการตรวจสอบต้องอ้างอิงจาก "ตัวอักษรและตัวเลขที่ระบุในไฟล์ PDF สัญญาเท่านั้น" 
+    11. ในการตรวจสอบ HTML (Col AA, AD, AO) ให้โฟกัสที่ 'ความถูกต้องของเนื้อหา ตัวเลข และเงื่อนไข' เป็นหลัก 
+    12. หากข้อมูลมีหลายบรรทัด แบ่ง Batch ได้ แต่ต้องแจ้งผลลัพธ์ครอบคลุมทั้งหมด
+
+    Process:
+    1. นำข้อมูลไฟล์ PDF มาตรวจสอบในไฟล์ Excel
+    2. Column Mapping : ข้อมูลพื้นฐาน Excel
+    2.1 Col G (start_date): วันที่เริ่มต้น Period (Format: วัน/เดือน/ปี )
+    2.2 Col H (end_date): วันที่สิ้นสุด Period (Format: วัน/เดือน/ปี )
+    2.3 Col I (refundable): FALSE เท่านั้น
+    2.4 Col J (abf): ไม่ต้องตรวจสอบ
+    2.5 Col K (contract_type): ระบุค่าเป็นค่าใดค่าหนึ่งต่อไปนี้เท่านั้น: Main Contract, Early Bird, Promotion, POR
+    2.6 Col L (cutoff_date) : ตัวเลข ตามสัญญา
+    2.7 Col M (hotel_supplier) : ชื่อโรงแรม 
+    2.8 Col O (min_nights_stay): ตัวเลขจำนวนคืน ตามสัญญา (หากไม่มีเงื่อนไข เว้นว่าง)
+    2.9 Col P (min_advance_days): ตัวเลข ตรวจสอบเฉพาะ Early Bird
+    2.10 Col Q (net_price): ตัวเลขตามราคาสัญญา
+    2.11 Col U (promo_book_till) : วันที่สิ้นสุด Booking (Format: ปี/เดือน/วัน 23:59:59 ) 
+    2.12 Col V (promo_code) : Code Promotion / ถ้าเป็น Early Bird และ long stay offer ที่มีลดราคาจะใช้แพทเทิล E.B xx DAYS, LONG STAY OFFER
+    2.13 Col W (promo_note): ใส่เฉพาะ Condition สำคัญโดยเฉพาะ MIN. xx NIGHTS, COMPULSORY NEW YEAR GALA DINNER on xx, NOT ALLOWED CHECK OUT 
+    2.14 Col X (room_allotment): ระบุค่าดังนี้: Free Sales, On Request, หรือ ตัวเลขจำนวนห้อง (หากไม่มีเว้นว่าง)
+    2.15 Col AA (cancellation_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้ (แพทเทิลไม่ตายตัวเน้นให้ข้อมูลถูกตามไฟล์สัญญา PDF ) :
+    CANCELLATION : LOW/SHOULDER/HIGH/PEAK SEASON หรือ ระบุเป็นวันที่ [ แพทเทิลวันที่ คือ DD MM YY : 1 MAR 27 ]
+    Cancellation made (รายละเอียด policy)
+    NO-SHOW/Early Check Out : (รายละเอียด policy)
+    *Remark : (ถ้ามี)
+    2.16 Col AD (child_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้ (แพทเทิลไม่ตายตัวเน้นให้ข้อมูลถูกตามไฟล์สัญญา PDF ) 
+    Room rate includes ABF for xx persons (ไม่จำเป็นต้องใส่ก็ได้)
+    Maximum Occupancy : XA / XA+XC (มีหรือไม่มีก็ได้หากไฟล์สัญญา PDF ระบุไว้ แต่ Excel ไม่ได้ระบุให้แนะนำให้ผู้ใช้กรอก)
+    Child ?? years old Sharing Bed + ABF = ?? THB
+    Child ?? years old Extra Bed + ABF = ?? THB
+    Adult Extra Bed + ABF = ?? THB
+    in case have 2 Children; (หากห้องให้มีเด็ก 2 คนขึ้นไป แนะนำแพทเทิลนี้ )
+    if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;
+    1st child Sharing Bed + ABF = ?? THB
+    2nd child Extra Bed + ABF = ?? THB
+    Adult Extra Bed + ABF = ?? THB
+    *Remark : Maximum X Extra bed / *CANNOT ADD EXTRA BED*
+    2.17 Col AE (child_share_bed_abf) ระบุเป็นตัวเลขโดยอิงราคา Child Sharing Bed+ABF ตามในสัญญา
+    2.18 Col AF (child_extra_bed_abf) ระบุเป็นตัวเลขโดยอิงราคา Child Extra Bed +ABF ตามในสัญญา 
+    2.19 Col AG (extra_bed_abf) ระบุเป็นตัวเลขโดยอิงราคา Adult Extra Bed +ABF ตามในสัญญา 
+    2.20 Col AI (full_board): ตัวเลข ตามที่ระบุไว้ในสัญญา
+    2.21 Col AJ (half_board): ตัวเลข ตามที่ระบุไว้ในสัญญา
+    2.22 Col AL (room_name): ระบุชื่อห้องพักตามสัญญา “ยืดยุ่นได้” เช่น สัญญาระบุ Deluxe room ไฟล์ Excel สามารถระบุ Deluxe ได้
+    2.23 Col AO (meals_and_info): รวมข้อมูล Condition, Meal, Transfer, E.B, Long Stay ให้จัดรูปแบบ HTML ตาม Pattern นี้ (หัวข้อไหนไม่มีข้อมูล ให้ตัดออก): (แพทเทิลไม่ตายตัวเน้นให้ข้อมูลถูกตามไฟล์สัญญา PDF ):
+    [ #MIN. XX NIGHTS - COMPULSORY CHRISTMAS/NEW YEAR’S GALA DINNER on xx - xx
+    **NOT ALLOWED CHECK OUT on xx** บรรทัดนี้ใส่เฉพาะช่วงที่ Period ระบุไว้ 
+    ※ MEAL RATES
+    ※ Benefits 
+    ※ Transfer (ระบุรายละเอียดตามสัญญาเฉพาะโรงแรมเกาะ/ทะเล)
+    ※ Early Bird
+    ※ Long Stay Offer / Minimum Nights Stay Offer
+    ※ Honeymooner / Anniversary ]
+    
+    ข้อมูลสัญญา PDF:
+    ```
+    {pdf_text}
+    ```
+    
+    ข้อมูล Excel ระบบ:
+    ```csv
+    {csv_data}
+    ```
+    
+    **คำสั่งสำหรับการตอบกลับ (Output Requirement):**
+    ลดคำชมแสดงคำตอบล้วนๆ คุณต้องตอบกลับมาเป็น **JSON format เท่านั้น** ห้ามมีข้อความอื่นนอกเหนือจาก JSON block เริ่มด้วย {{ และจบด้วย }}
+    โครงสร้าง JSON ที่ต้องการคือ:
+    {{
+        "accuracy": <ตัวเลข 0-100 ระบุเปอร์เซ็นต์ความถูกต้องโดยรวม>,
+        "summary": "<ข้อความสรุปสิ่งที่ต้องแก้ไขสั้นๆ ครบทุกข้อ>",
+        "correct_items": [
+            "<รายการสิ่งที่ถูกต้อง 1>",
+            "<รายการสิ่งที่ถูกต้อง 2>"
+        ],
+        "wrong_items": [
+            {{
+                "issue": "<คำอธิบายสิ่งที่ผิดพลาด *หมายเหตุ : หากข้อมูลเป็นโค้ด HTML บน Excel ให้อ่านเป็นข้อมูลแล้วหากข้อมูลตรงไหนผิด ให้แสดงคำตอบมาเป็นตัวอักษรแทน>",
+                "should_be": "<สิ่งที่ควรจะเป็นตาม Logic/สัญญา>",
+                "action": "<คำแนะนำสั้นๆ ในการแก้ไข>"
+            }}
+        ],
+        "confuse_items": [
+            "<จุดที่ข้อมูลขัดแย้งกัน หรือไม่แน่ใจ หรือไม่มีระบุในสัญญา เช่น As per main contract แต่หาไม่เจอ>"
+        ]
+    }}
+    """
+
+    
     try:
-        best_model, all_models = detect_available_model(api_key)
-        others = [m for m in all_models if m != best_model]
-        models_to_try = [best_model] + others + _FALLBACK_MODELS
-        seen = set()
-        for m in models_to_try:
-            if m not in seen:
-                seen.add(m)
-                available_models_list.append(m)
-    except:
-        available_models_list = _FALLBACK_MODELS
-
-    for model_name in available_models_list:
-        try:
-            # Enforce Strict JSON Mode for perfect table extraction
-            config = types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json",
-                max_output_tokens=65536,
-            )
-            full_text = ""
-            for chunk in client.models.generate_content_stream(
-                model=model_name, 
-                contents=contents,
-                config=config
-            ):
-                if chunk.text:
-                    full_text += chunk.text
-            
-            if not full_text:
-                continue
-
-            # Robust JSON extraction
-            json_match = re.search(r'(\[.*\])', full_text, re.DOTALL)
-            clean_json = json_match.group(1) if json_match else full_text.strip().replace('```json', '').replace('```', '')
-                
-            return json.loads(clean_json), None
-            
-        except Exception as e:
-            err = str(e)
-            last_error = f"Model {model_name} failed: {err}"
-            if "429" in err:
-                time.sleep(1) # Small pause
-            continue
-            
-    return [], f"All models exhausted. Last error: {last_error}"
-
-def create_upload_excel(data_list: list):
-    """
-    Converts extracted JSON list into a formatted Excel file buffer. [IN TEST]
-    """
-    # Ensure all required columns exist in the DataFrame, even if missing from JSON
-    df = pd.DataFrame(data_list)
-    for col in EXCEL_UPLOAD_COLUMNS:
-        if col not in df.columns:
-            df[col] = ""
-            
-    # Reorder to strict column layout
-    df = df[EXCEL_UPLOAD_COLUMNS]
-    
-    # 1. HARDCODED OVERRIDES (To prevent AI hallucination)
-    df['status'] = 'True'
-    df['refundable'] = 'False'
-    df['abf'] = 'Included'
-    df['action'] = 'insert'
-    df['tags'] = '[]'
-    df['created_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Optional logic: if AI left room_allotment empty, set it
-    df['room_allotment'] = df['room_allotment'].replace("", "Free Sales")
-    
-    # 2. FORCE EMPTY STRING ON COLUMNS THAT SHOULD NOT HAVE 0
-    empty_cols = [
-        'net_price_emerald', 'net_price_ruby', 'net_price_topaz',
-        'all_inclusive', 'baby_cot', 'cancellation_policy_net',
-        'early_check_in', 'extra_bed_no_abf', 'full_board', 'half_board',
-        'hotel_extra_fees', 'hotel_transfer', 'late_check_out'
-    ]
-    for col in empty_cols:
-        df[col] = ""
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
         
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Upload')
-    
-    return output.getvalue()
+        # Clean up if the model wrapped it in markdown code blocks
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+            
+        result_json = json.loads(response_text.strip())
+        return result_json
+        
+    except json.JSONDecodeError:
+        return {
+            "accuracy": 0,
+            "summary": "เกิดข้อผิดพลาดในการอ่านผลลัพธ์จาก AI (JSON Parse Error)",
+            "correct_items": [],
+            "wrong_items": [{"issue": "AI ไม่ได้ส่งข้อมูลกลับมาเป็น JSON ตามที่กำหนด", "should_be": "JSON Format", "action": "ลองกดตรวจสอบใหม่อีกครั้ง"}],
+            "confuse_items": [f"Raw response: {response.text}"]
+        }
+    except Exception as e:
+        return {
+            "accuracy": 0,
+            "summary": f"เกิดข้อผิดพลาดในการเชื่อมต่อ API: {str(e)}",
+            "correct_items": [],
+            "wrong_items": [],
+            "confuse_items": []
+        }
