@@ -1,372 +1,345 @@
-"""
-utils.py — PDF extraction + Gemini AI contract comparison
-Uses the NEW google.genai SDK (google-genai package)
-"""
 import io
-import re
-import json
+import time
+import pandas as pd
 import streamlit as st
+import json
+import re
+from datetime import datetime
 from google import genai
 from google.genai import types
 
-# ─── Fallback model list (tried in order) ───────────────────────────────────────
-_FALLBACK_MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-001",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash-001",
-    "gemini-pro",
+# ─── EXCEL SCHEMA DEFINITION [IN TEST] ────────────────────────────────────────
+# This list defines the exact column order required for the system upload.
+EXCEL_UPLOAD_COLUMNS = [
+    '_id', 'hotel_id', 'room_id', 'status', 'created_date', 'edited_date',
+    'start_date', 'end_date', 'refundable', 'abf', 'contract_type', 'cutoff_date',
+    'hotel_supplier', 'important_message', 'min_nights_stay', 'min_advance_days',
+    'net_price', 'net_price_emerald', 'net_price_ruby', 'net_price_topaz',
+    'promo_book_till', 'promo_code', 'promo_note', 'room_allotment', 'all_inclusive',
+    'baby_cot', 'cancellation_policy', 'cancellation_policy_net', 'early_check_in',
+    'child_policy', 'child_share_bed_abf', 'child_extra_bed_abf', 'extra_bed_abf',
+    'extra_bed_no_abf', 'full_board', 'half_board', 'hotel_extra_fees', 'room_name',
+    'hotel_transfer', 'late_check_out', 'meals_and_info', 'tags', 'action'
 ]
 
+# ─── Fallback model list ───────────────────────────────────────
+# Expanded with models from user logs to maximize chances of finding an open quota
+_FALLBACK_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash-001",
+    "gemini-2.0-flash-lite-001",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
+    "gemini-pro-latest",
+    "gemini-1.5-pro",
+    "gemini-1.5-pro-latest",
+]
 
-# ─── Cached client (one init per session) ────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def _get_client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
-
-# ─── Auto-detect working model ─────────────────────────────────────────────────────
-@st.cache_data(show_spinner=False)
 def detect_available_model(api_key: str) -> tuple[str, list[str]]:
-    """
-    Try ListModels first, then fall back to pinging each model.
-    Returns (best_model_name, all_available_names).
-    """
     client = _get_client(api_key)
     available: list[str] = []
     try:
         for m in client.models.list():
             name = getattr(m, "name", "") or ""
             short = name.replace("models/", "")
-            # Skip specialized models that don't support text/document processing
-            if any(skip in short.lower() for skip in ["tts", "audio", "vision", "embedding", "tuning"]):
+            # Filter out models not suitable for heavy data tasks or with small context
+            skip_keywords = ["tts", "audio", "vision", "embedding", "tuning", "research", "banana", "lyria", "live"]
+            if any(skip in short.lower() for skip in skip_keywords):
                 continue
             if any(k in short for k in ["flash", "pro"]):
                 available.append(short)
     except Exception:
-        pass
+        return "", [] # API Key is invalid or network error
 
-    # Prefer 2.0-flash, then anything with 'flash', then 'pro'
-    for preferred in ["gemini-2.0-flash", "gemini-2.0-flash-lite",
-                      "gemini-1.5-flash", "gemini-1.5-flash-latest"]:
+    # Prefer models with HUGE context windows (1M+)
+    preferred_order = [
+        "gemini-2.0-flash", 
+        "gemini-1.5-flash", 
+        "gemini-2.0-flash-lite", 
+        "gemini-1.5-pro",
+        "gemini-1.5-flash-8b"
+    ]
+    for preferred in preferred_order:
         if preferred in available:
             return preferred, available
 
-    for m in available:
-        if "flash" in m:
-            return m, available
-    for m in available:
-        if "pro" in m:
-            return m, available
+    for m in _FALLBACK_MODELS:
+        if m in available: return m, available
 
-    # If listing failed, try pinging each fallback
-    for model_name in _FALLBACK_MODELS:
-        try:
-            resp = client.models.generate_content(
-                model=model_name,
-                contents="ping",
-                config=types.GenerateContentConfig(max_output_tokens=5),
-            )
-            if resp:
-                return model_name, [model_name]
-        except Exception:
-            continue
+    if available: return available[0], available
+    return "", []
 
-    return "", available
-
-
-# ─── Validate API key ─────────────────────────────────────────────────────────────
 def validate_api_key(api_key: str) -> tuple[bool, str]:
-    """Returns (ok, message)."""
-    if not api_key:
-        return False, "No API key provided."
+    if not api_key: return False, "No API key provided."
     model, available = detect_available_model(api_key)
-    if model:
-        return True, f"Connected ✓  Model: {model}"
-    if available:
-        return True, f"Connected (models found: {len(available)})"
-    return False, "API key invalid or Gemini API not enabled for this project."
+    if model: return True, f"Connected ✓ Model: {model}"
+    if available: return True, f"Connected (models found: {len(available)})"
+    return False, "API key invalid or Gemini API not enabled."
 
+def _excel_col_name(n):
+    """Convert 0-indexed column number to Excel letter (0 -> A, 1 -> B, 26 -> AA)."""
+    name = ""
+    while n >= 0:
+        name = chr(n % 26 + 65) + name
+        n = n // 26 - 1
+    return name
 
-# ─── JSON Schema Definition ───────────────────────────────────────────────────
-_policy_schema = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "topic": types.Schema(type=types.Type.STRING),
-        "contract_1": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
-        "contract_2": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
-        "diff_summary": types.Schema(type=types.Type.STRING),
-    },
-    required=["topic", "contract_1", "contract_2", "diff_summary"]
-)
+def convert_excel_to_csv_with_letters(excel_bytes: bytes, focus_list: list = None) -> str:
+    """Read Excel, drop empty/unused columns, and return CSV string where headers include Excel column letters."""
+    df = pd.read_excel(io.BytesIO(excel_bytes), header=None)
+    if df.empty: return ""
+    
+    letters = [_excel_col_name(i) for i in range(len(df.columns))]
+    headers = [f"{letters[i]}: {str(val)}" if pd.notna(val) else letters[i] for i, val in enumerate(df.iloc[0])]
+    df.columns = headers
+    df = df.iloc[1:].reset_index(drop=True)
+    
+    # --- Token Optimizations ---
+    df = df.dropna(axis=0, how='all')
+    df = df.dropna(axis=1, how='all')
+    
+    # If focus mode is active, we can drop EVERYTHING not related to the focus
+    if focus_list and "All-in-One Full Scan" not in focus_list:
+        needed_prefixes = {'AL', 'M'} # Always keep Room Name and Hotel Supplier
+        mapping = {
+            "Net Price & Extra Beds": ['Q', 'AE', 'AF', 'AG', 'AI', 'AJ'],
+            "Cancellation Policy": ['AA', 'G', 'H'],
+            "Child Policy": ['AD', 'AE', 'AF', 'AG'],
+            "Period & Seasons": ['G', 'H', 'K', 'O', 'P', 'U', 'V', 'W'],
+            "Meals & Info": ['AO', 'AI', 'AJ']
+        }
+        for f in focus_list:
+            if f in mapping:
+                needed_prefixes.update(mapping[f])
+        
+        cols_to_keep = []
+        for col in df.columns:
+            prefix = col.split(':')[0].strip()
+            if prefix in needed_prefixes:
+                cols_to_keep.append(col)
+        df = df[cols_to_keep]
+    else:
+        # Default: Drop Col J (ABF) since the prompt says "ไม่ต้องตรวจสอบ"
+        cols_to_keep = [c for c in df.columns if not c.startswith('J:')]
+        df = df[cols_to_keep]
+    
+    return df.to_csv(index=False)
 
-_response_schema = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "step_by_step_analysis": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
-        "hotel_name": types.Schema(type=types.Type.STRING),
-        "year_1": types.Schema(type=types.Type.STRING),
-        "year_2": types.Schema(type=types.Type.STRING),
-        "seasons": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "season_name": types.Schema(type=types.Type.STRING),
-                    "period_1": types.Schema(type=types.Type.STRING),
-                    "period_2": types.Schema(type=types.Type.STRING),
-                    "conditions": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
-                    "rooms": types.Schema(
-                        type=types.Type.ARRAY,
-                        items=types.Schema(
-                            type=types.Type.OBJECT,
-                            properties={
-                                "room_name": types.Schema(type=types.Type.STRING),
-                                "price_1": types.Schema(type=types.Type.STRING),
-                                "price_2": types.Schema(type=types.Type.STRING),
-                            },
-                            required=["room_name", "price_1", "price_2"]
-                        )
-                    )
-                },
-                required=["season_name", "period_1", "period_2", "conditions", "rooms"]
-            )
-        ),
-        "extra_bed": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
-        "early_bird": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
-        "bonus_night": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
-        "wellbeing": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
-        "cancellation": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
-    },
-    required=[
-        "step_by_step_analysis", "hotel_name", "year_1", "year_2", 
-        "seasons", "extra_bed", "early_bird", "bonus_night", "wellbeing", "cancellation"
-    ]
-)
+def get_recheck_prompt(focus_list: list = None) -> str:
+    focus_instr = ""
+    if focus_list and "All-in-One Full Scan" not in focus_list:
+        focus_instr = f"\n\n[SYSTEM ALERT: STRICT FOCUS MODE ACTIVE]\nYour primary objective is EXCLUSIVELY to audit: **{', '.join(focus_list)}**.\nIgnore other columns unless they are critical for mapping the selected areas. Do not report issues outside these focus areas.\n\n"
 
-
-# ─── Build prompt ─────────────────────────────────────────────────────────────
-def _build_prompt() -> str:
     return f"""
-You are an expert hotel contract data extractor.
-Your task is to extract data from TWO hotel contract PDFs (Contract 1: Old Year, Contract 2: New Year) and prepare it for our Python system.
+Data Recheck : (100% Full Scan)
+{focus_instr}
+Role: Senior Auditor. 
+Objective: Compare PDF Contract vs Excel Data. 100% Accuracy. 
+Strictly use provided documents only. Report discrepancies precisely.
 
-Perform a 100% FULL SCAN. DO NOT skip any data, but you MUST format the text output according to the STRICT PATTERNS below. Do not output raw paragraphs.
+How to check : 
+1. อ่านไฟล์ PDF ที่ส่งให้ (100% Full Scan) เพื่อเตรียมไว้ตรวจสอบไฟล์ Excel ที่ถูกทำไว้แล้ว
+2. นำข้อมูลในไฟล์ PDF มาตรวจสอบเปรียบเทียบกับไฟล์ Excel (ที่ถูกแปลงเป็น CSV โดยมีชื่อคอลัมน์เช่น G:, H:, Q: กำกับไว้) เพื่อตรวจสอบความถูกต้อง
+3. หาก Full Scan และตรวจสอบเสร็จแล้ว ให้รายงานผล ตามรูปแบบที่ตั้งไว้ให้ผู้ใช้งาน อ่านง่าย
 
-CRITICAL JSON RULES:
-1. You must output STRICTLY VALID JSON.
-2. DO NOT use double quotes (") inside any of your string values. If you need to quote something, use single quotes (').
-3. If you need newlines within a string, escape them as \\n. DO NOT use literal unescaped newlines.
-4. Ensure every property and array element is separated by a comma.
+Directives:
+1. Full Scan: Audit every cell. No sampling.
+2. Row Mapping: Map rates (Q, AE-AG) to room type (AL) strictly.
+3. Exceptions: Search for "excluding", "not including", "only" in PDF.
+4. Child Logic: Under 12 = 11.99, 5-11 = 5-11.99.
+5. Cancellation: Match days in AA to seasons in PDF.
+6. Discount & Extra Person: For Early Booking/Promotions, ALWAYS check if the contract states "apply with extra person charge" or similar. If YES, Extra Bed (AG) and Child Extra Bed (AF) MUST be discounted. DO NOT flag this as a FAIL.
+7. GROUPING (NON-NEGOTIABLE RULE):
+   - BEFORE (WRONG - never do this):
+     | AO (Room A, Peak) | 3 nights | 7 nights | ... |
+     | AO (Room B, Peak) | 3 nights | 7 nights | ... |
+     | AO (Room C, Peak) | 3 nights | 7 nights | ... |
+   - AFTER (CORRECT - always do this):
+     | AO (ทุก Room Type, Peak Season) | 3 nights | 7 nights | ... |
+   If 2 or more rows have the SAME column, SAME error, SAME fix — MERGE into ONE row. Write location as "ทุก Room Type" or "Row 5-15" etc.
+8. IGNORE FORMATTING & DECIMALS (CRITICAL): Do NOT flag an error if the difference is purely numerical formatting. For example: `1600` is EXACTLY THE SAME as `1600.00`. `7352.5` is EXACTLY THE SAME as `7352.50`. If the factual numeric value is identical, you MUST consider it CORRECT. Do NOT flag it as FAIL. Do NOT ask the user to "ปรับรูปแบบตัวเลขให้เป็นทศนิยม 2 ตำแหน่ง".
+10. HTML Code Block Placement (CRITICAL): For policy columns (AA, AD, AO), when you find an error:
+   - In the table row, write ONLY a plain-text summary in the "ข้อมูลที่ถูกต้อง" column.
+   - AFTER the table ends (not inside a cell!), add the HTML dropdown on its own line like this:
 
-═══════════════════════════════════════════════
-FORMATTING PATTERNS (STRICT!)
-═══════════════════════════════════════════════
-1. **Season Conditions (for periods/seasons)**:
-   DO NOT copy paragraphs. Extract and format ONLY the key points as an array of strings using the '•' bullet point:
-   - • MIN. [x] NIGHTS
-   - • COMPULSORY [GALA DINNER / NEW YEAR] on [Date] = [Price] THB
-   - • **NOT ALLOWED CHECK OUT on [Date] - [Date]**
-   - • FULL MOON Period [Date] - [Date] = [Price] THB
+---
+HTML สำหรับแก้ไข [Column Name] — [Room/Period]:
 
-2. **Extra bed / Extra person / Child Policy**:
-   Summarize using this exact format with the '•' bullet point:
-   - • CHD ([Age]-[Age] yrs) Sharing bed + ABF = [Price or FOC]
-   - • CHD ([Age]-[Age] yrs) Extra bed + ABF = [Price] THB
-   - • Adult ([Age] yrs and above) Extra bed + ABF = [Price] THB
+<details>
+<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
 
-3. **Early Bird Offer & Bonus Nights & Benefits**:
-   Format strictly using the '•' bullet point for titles and items:
-   - • [Topic or Benefit Name]:
-   - • Valid Period: [Date - Date]
-   - • E.B [x] DAYS, [x]% discount.
-   - • [Can combine with: Promotion Name]
-   - **CRITICAL: SEPARATE NOTES PER CONTRACT**: If there are notes about which promotions can be combined (e.g., 'Can combine with Early Bird', 'Cannot combine with Long Stay'), you MUST extract these INDEPENDENTLY for each contract.
-     - Put Contract 1's combinability notes ONLY in `contract_1` array.
-     - Put Contract 2's combinability notes ONLY in `contract_2` array.
-     - Do NOT merge or mix them. If Contract 1 says 'Can combine with E.B.' but Contract 2 says 'Can combine with E.B. and Long Stay', these are DIFFERENT and must be recorded separately.
-   - The same rule applies to ALL policy sections: `early_bird`, `bonus_night`, `wellbeing`, `extra_bed`, and `cancellation`.
+```html
+[INSERT FULL HTML CODE HERE]
+```
 
-4. **Cancellation Policy**:
-   Format strictly using the '•' bullet point for the valid period, but NO bullet for the penalty details:
-   - • Valid Period: [Season Name / Date]
-   - Notice [x] days prior to arrival, penalty [x]% (or x nights)
+</details>
 
-5. **Important Notes & Remarks**:
-   If there are important notes, remarks, exceptions, or conditions (e.g. "NOTE: If reservation overlaps different seasons..."), you MUST prefix that specific string with `[RED] ` so our system can color it red.
-   - [RED] • NOTE: Early bird offer is NOT applicable for meal plans.
+10. Long Stay Offer Rules: If the file shows Long Stay Offer with MAX 7 NIGHTS (e.g., #MIN. 4 NIGHTS get 10% or #MIN. 7 NIGHTS get 15%), this is the COMPANY'S STANDARD POLICY. Do NOT flag as FAIL. Only flag REVIEW with note "ตรวจสอบ Long Stay Offer กับสัญญาอีกครั้ง" if the number of nights or discount percentage differs from the PDF.
+11. MUST COMPLETE: You MUST audit and report ALL columns and ALL rows. Do NOT stop early. Do NOT say "etc" or abbreviate. If data is large, continue until every row is covered.
 
-6. **Rooms & Prices (CRITICAL)**:
-    - **EXHAUSTIVE EXTRACTION (MANDATORY)**: You MUST extract EVERY SINGLE room type listed in the table for EVERY season. DO NOT stop early. DO NOT summarize or skip any rows.
-    - Extract room names and prices exactly as they appear in the tables.
-    - **Identify Table**: Look for sections titled 'ROOM RATES', 'ACCOMMODATION RATES', or similar.
-    - **SEASON COLUMN IDENTIFICATION**: Look for headers like 'SEASON I', 'SEASON II', 'PEAK', 'HIGH', 'LOW' or specific date ranges (e.g., '01-Nov-25 to 19-Dec-25') in the top rows of the rate tables.
-    - **DBL RATE ONLY**: If a table column has sub-columns for 'SGL' and 'DBL', or if the header says 'Single / Double', you MUST extract the **DOUBLE (DBL) / TWIN** rate.
-    - **ABF INCLUDED**: Extract the rate that includes American Breakfast (ABF) if specified. If there are separate 'Room Only' and 'With Breakfast' tables, use 'With Breakfast'.
-    - **FIT / WHOLESALE RATES**: Use standard FIT/Wholesale rates (the main contract rates), not special promotions or limited offers.
-    - **CLEAN NUMBERS**: Output prices as simple numbers without commas (e.g., "15000").
-    - **READ ROW BY ROW (CRITICAL)**: Trace each room type horizontally. Do not look at the numbers above or below it.
-    - **AVOID DUPLICATION**: Be extremely careful not to accidentally copy the price from the row above or below. If row 1 is 8,500 and row 2 is 9,500, do NOT output 9,500 for both.
-    - **STRICT ALIGNMENT (CRITICAL)**: Do not mix data between the two contracts. 
-      - `year_1`, `period_1`, and `price_1` MUST come ONLY from Contract 1 (the first document).
-      - `year_2`, `period_2`, and `price_2` MUST come ONLY from Contract 2 (the second document).
-      - NEVER use the year or dates from Contract 2 to fill in Contract 1's fields. If a season's dates vary between contracts (e.g., Nov 24 in Contract 1 and Nov 25 in Contract 2), you MUST record the exact dates found in each respective document.
-    - **VERIFY INTERSECTION**: For each price, mentally verify: "Does the value exactly match the intersection of this specific Room (Row) and Season (Column)? Did I accidentally copy the number from the next room?"
-    - **MISSING PRICE**: If a room type only exists in one contract and not the other, use "N/A" for the missing price field. If the contract says "on request", use "on request only".
+Process:
+1. นำข้อมูลไฟล์ PDF มาตรวจสอบในไฟล์ Excel
+2. Column Mapping : ข้อมูลพื้นฐาน Excel (ชื่อคอลัมน์ใน CSV จะมีตัวอักษรกำกับ เช่น G:, H:)
+   2.1 Col G (start_date): วันที่เริ่มต้น Period (Format: วัน/เดือน/ปี)
+   2.2 Col H (end_date): วันที่สิ้นสุด Period (Format: วัน/เดือน/ปี)
+   2.3 Col I (refundable): บังคับเป็น FALSE เท่านั้น (ห้ามตรวจสอบกับสัญญา และห้ามรายงานผลในส่วนนี้เด็ดขาด)
+   2.4 Col J (abf): ไม่ต้องตรวจสอบ
+   2.5 Col K (contract_type): ระบุค่าเป็นค่าใดค่าหนึ่ง: Main Contract, Early Bird, Promotion, POR
+   2.6 Col L (cutoff_date): ตัวเลข ตามสัญญา
+   2.7 Col M (hotel_supplier): ชื่อโรงแรม 
+   2.8 Col O (min_nights_stay): ตัวเลขจำนวนคืน ตามสัญญา (หากไม่มีเว้นว่าง)
+   2.9 Col P (min_advance_days): ตัวเลข ตรวจสอบเฉพาะ Early Bird
+   2.10 Col Q (net_price): ตัวเลขตามราคาสัญญา
+   2.11 Col U (promo_book_till): วันที่สิ้นสุด Booking (Format: ปี/เดือน/วัน 23:59:59) 
+   2.12 Col V (promo_code): Code Promotion / E.B xx DAYS, LONG STAY OFFER
+   2.13 Col W (promo_note): ใส่เฉพาะ Condition สำคัญโดยเฉพาะ MIN. xx NIGHTS, COMPULSORY NEW YEAR GALA DINNER, NOT ALLOWED CHECK OUT 
+   2.14 Col X (room_allotment): Free Sales, On Request, หรือ ตัวเลข (หากไม่มีเว้นว่าง)
+   2.15 Col AA (cancellation_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
+        CANCELLATION : LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD<br>
+        <ul style="list-style-type: disc;">
+        <li>Cancellation made (policy)</li>
+        <li><span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : (policy)</li>
+        </ul>
+        <span style="color: red; font-weight: bold;">*Remark</span> : (ถ้ามี)
+   2.16 Col AC (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
+   2.17 Col AD (child_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
+        <span style="color: green; font-weight: bold;">Room rate includes ABF for xx persons</span><br>
+        <span style="color: green; font-weight: bold;">Maximum Occupancy : XA / XA+XC</span><br><br>
+        (policy)<br><br>
+        in case have 2 Children;<br>
+        if have <strong>2 children (xx-xx.99 years old)</strong> stay in room, subject to charge as policy below;<br>
+        1st child (policy)<br>
+        2nd child (policy)<br><br>
+        Adult (policy)<br>
+        <span style="color: red; font-weight: bold;">*Maximum X Extra bed / *CANNOT ADD EXTRA BED*</span>
+   2.18 Col AE (child_share_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Sharing Bed+ABF 
+   2.19 Col AF (child_extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Extra Bed +ABF 
+   2.20 Col AG (extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Adult Extra Bed +ABF 
+   2.21 Col AI (full_board): ตัวเลข 
+   2.22 Col AJ (half_board): ตัวเลข 
+   2.23 Col AL (room_name): ระบุชื่อห้องพักตามสัญญา “ยืดหยุ่นได้”
+   2.24 Col AO (meals_and_info): รวมข้อมูลเป็น HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
+        <span style="color: red; font-weight: bold;">#MIN. XX NIGHTS - COMPULSORY CHRISTMAS/NEW YEAR'S GALA DINNER on xx - xx</span><br>
+        <span style="color: red; font-weight: bold;">**NOT ALLOWED CHECK OUT on xx**</span> (only peak / period that have conditions)
+        <hr>
+        <strong>MAIN CONTRACT 25/26 : 1 NOV 25 - 31 OCT 26</strong><br><br>
+        <span style="color: orange; font-weight: bold;">[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(only for Peak)</span><br>
+        <strong>MIN. XX NIGHTS during xx-xx</strong><br>
+        <strong>NOT ALLOWED CHECK OUT on xx</strong><br><br>
+        ※ <strong>Compulsory</strong> New Year's Gala Dinner on 31 DEC xx<br>
+        Adult = xxx THB / Child (age) = xxx THB<br>
+        <span style="color: red; font-weight: bold;">*Remark : </span><br>
+        <span style="color: orange; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</span><br><br>
+        ※ <strong>MEAL RATES</strong><br>
+        <strong>Half Board</strong> (Lunch OR Dinner)<br>
+        <strong>Full Board</strong> (Lunch AND Dinner)<br>
+        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
+        ※ <strong>Compulsory / Optional Meal Plan</strong><br>
+        Adult = / Child =<br>
+        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
+        ※ <strong>Benefits</strong><br><br>
+        ※ <strong>Transfer</strong><br><br>
+        ※ <strong>Early Bird</strong><br>
+        <span style="color: blue; font-weight: bold;">Validity : (Period)</span><br>
+        <span style="color: red; font-weight: bold;">*Black Out : (Period)</span><br>
+        • E.B 120 Days, get 25% discount.<br>
+        • E.B 90 Days, get 20% discount.<br>
+        • E.B 60 Days, get 10% discount.<br>
+        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
+        ※ <strong>Long Stay Offer / Minimum Nights Stay Offer</strong><br>
+        <span style="color: blue; font-weight: bold;">Validity : (Period)</span><br>
+        <span style="color: red; font-weight: bold;">*Black Out : (Period)</span><br>
+        • <span style="color: green; font-weight: bold;">#MIN. 4 NIGHTS</span>, get 10% discount<br>
+        • <span style="color: purple; font-weight: bold;">#MIN. 6 NIGHTS</span>, get 15% discount<br><br>
+        ※ <strong>Honeymooner / Anniversary</strong>
 
-7. **Season Alignment (CRITICAL)**:
-    - Match seasons between contracts by NAME or approximate DATE RANGE (e.g., "Low Season" in Contract 1 pairs with "Low Season" in Contract 2).
-    - If Contract 1 has a season that does NOT EXIST in Contract 2, you MUST still include it as a season entry with `"period_2": "N/A"` and `"price_2": "N/A"` for all rooms.
-    - If Contract 2 has a NEW season not in Contract 1, include it with `"period_1": "N/A"` and `"price_1": "N/A"` for all rooms.
-    - NEVER leave `period_1` or `period_2` blank. Always use "N/A" as the fallback, never an empty string.
+Output: รายงานผลเป็นภาษาไทย 100% ด้วยภาษาทางการ (ห้ามใช้อิโมจิ ห้ามใช้เครื่องหมาย ### และห้ามมีคำพูดเกริ่นนำ)
 
-═══════════════════════════════════════════════
-7. **Chain of Thought (STRICT EXTRACTION LOGIC)**:
-    1. **Independent Extraction**: First, mentally list all seasons and prices for Contract 1. Then, do the same for Contract 2. Do NOT mix them.
-    2. **Identify Hotel & Years**: Find the hotel name and the two contract periods.
-    3. **Locate Table**: For each paired season, find the corresponding Rate Table in BOTH PDFs.
-    4. **Extract Season Conditions**: Look for minimum nights, compulsory dinners, checkout restrictions, etc. for this specific season. Combine them into the `conditions` array.
-    5. **Extract Prices (ROW BY ROW)**:
-       - Process ONE room category at a time. You MUST process EVERY SINGLE ROW in the rate table from top to bottom. Do NOT skip any rooms.
-       - Locate the row for that specific Room Category.
-       - Trace horizontally to the column for the specific Season.
-       - If there are sub-columns, pick the 'Double' one.
-       - **CRITICAL**: Read the DBL/Twin price from Contract 1 and assign it to `price_1`. Read the price from Contract 2 and assign it to `price_2`. Do not cross-contaminate.
-    6. **Extract Policies**: Convert Child Policy, Extra Bed, Early Bird (E.B.), Bonus Nights, and Cancellation policies into the bulleted format. Do this for BOTH contracts.
-    7. **Compare Policies**: Determine if the policies are the SAME or if there are changes. Write a brief `diff_summary`.
-    8. **Quality Check**:
-       - Did I accidentally swap the prices?
-       - Does `price_1` exactly match the PDF for Contract 1?
-       - **ADJACENT NUMBER CHECK**: Did I accidentally duplicate the price from the row above or below? Check carefully.
-       - **COMPLETENESS CHECK**: Did I extract ALL the rooms listed for THIS season? Check the PDF again. Did I stop early?
-       - **CONDITIONS CHECK**: Did I extract the Season Conditions (Min nights, Gala dinners) for each season?
-       - Are all policies (Cancellation, Extra Bed, etc.) fully extracted and formatted with bullets?
-9. **Finalize JSON**.
+[SECTION_FAIL]
+**พบข้อผิดพลาด**
 
-═══════════════════════════════════════════════
-THE PDF FILES HAVE BEEN PROVIDED AS INLINE DOCUMENTS.
-Contract 1 is the first PDF provided.
-Contract 2 is the second PDF provided.
-═══════════════════════════════════════════════
-RETURN THIS EXACT JSON STRUCTURE:
-{{
-  "step_by_step_analysis": [
-    "Step 1: Identifying Hotel. Contract 1: 24/25. Contract 2: 25/26.",
-    "Step 2: Extracting Season Conditions (Min nights, Gala dinners).",
-    "Step 3: Analyzing Contract 1 Row by Row. Room A is 8,500. Next row, Room B is 9,500.",
-    "Step 4: Analyzing Contract 2 Row by Row. Room A is 9,000. Next row, Room B is 10,000.",
-    "Step 5: Merging. period_1 = 01 Nov 24, price_1 = 8500. period_2 = 01 Nov 25, price_2 = 9000.",
-    "Step 6: Extracting and comparing Extra Bed policies..."
-  ],
-  "hotel_name": "Hotel Name",
-  "year_1": "24/25",
-  "year_2": "25/26",
-  "seasons": [
-    {{
-      "season_name": "PEAK SEASON (or empty)",
-      "period_1": "1 NOV 24 - 23 DEC 24",
-      "period_2": "1 NOV 25 - 23 DEC 25",
-      "conditions": [
-        "MIN. 3 NIGHTS",
-        "COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
-      ],
-      "rooms": [
-        {{
-          "room_name": "Deluxe Room",
-          "price_1": "15000",
-          "price_2": "16000"
-        }}
-      ]
-    }}
-  ],
-  "extra_bed": [
-    {{
-      "topic": "Child / Extra bed policy",
-      "contract_1": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"],
-      "contract_2": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"]
-    }}
-  ],
-  "early_bird": [
-    {{
-      "topic": "Early Bird details",
-      "contract_1": ["• Valid Period: 1 Nov 24 - 31 Oct 25", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night", "[RED] • NOTE: Cannot combine with Long Stay"],
-      "contract_2": ["• Valid Period: 1 Nov 25 - 31 Oct 26", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night, Long Stay", "[RED] • NOTE: Not applicable for meal plans"],
-      "diff_summary": "25-26 now allows combining with Long Stay; added meal plan restriction"
-    }}
-  ],
-  "bonus_night": [
-    {{
-      "topic": "Bonus night details",
-      "contract_1": ["• Valid Period: 1 May 24 - 31 Oct 24", "• STAY 5 PAY 4", "• Can combine with: Early Bird"],
-      "contract_2": ["• Valid Period: 1 May 25 - 31 Oct 25", "• STAY 5 PAY 4", "• Can combine with: Early Bird, Honeymoon"],
-      "diff_summary": "25-26 added Honeymoon to combinable promotions"
-    }}
-  ],
-  "wellbeing": [
-    {{
-      "topic": "Long stay / Wellbeing",
-      "contract_1": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: None"],
-      "contract_2": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: Bonus Night"],
-      "diff_summary": "25-26 allows combining Honeymoon with Bonus Night"
-    }}
-  ],
-  "cancellation": [
-    {{
-      "topic": "Cancellation Policy",
-      "contract_1": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue"],
-      "contract_2": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue", "[RED] • NOTE: If reservation overlaps different seasons, the higher season cancellation terms apply"],
-      "diff_summary": "25-26 added Note for overlapping seasons"
-    }}
-  ]
-}}
+### หมวดหมู่: [ชื่อคอลัมน์ เช่น Net Price (Q)]
+| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
+|:---|:---|:---|:---|
+| [ตำแหน่ง เช่น ทุก Room Type ใน Peak Season] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
+
+(หากคอลัมน์นี้เป็น AA, AD, หรือ AO คุณ **ต้อง** ใส่โค้ด HTML ตามรูปแบบนี้ด้านล่างตารางเสมอ)
+<details>
+<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
+
+```html
+[โค้ด HTML ที่ถูกต้อง]
+```
+
+</details>
+
+---
+
+### หมวดหมู่: [ชื่อคอลัมน์ต่อไป]
+| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
+|:---|:---|:---|:---|
+| [ตำแหน่ง] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
+
+[SECTION_REVIEW]
+**จุดที่ควรตรวจสอบเพิ่มเติม [REVIEW]**
+| สถานะ | ตำแหน่ง | รายละเอียดข้อสงสัย | ข้อแนะนำ |
+|:---|:---|:---|:---|
+| [REVIEW] | **[Col]** | [เหตุผลที่สงสัย] | [สิ่งที่ควรเช็ค] |
+
+---
+
+**สรุปผลการตรวจสอบ**
+- **คะแนนความถูกต้อง:** [xx]%
+- **บทสรุป:** [สรุปสั้นๆ 1 ประโยค]
+
+---
+
+[SECTION_VERIFIED]
+*** กรณีถูกต้องทั้งหมด: **STATUS: [VERIFIED] ข้อมูลถูกต้องตามสัญญาทุกประการ** ***
 """
 
-
-# ─── Streaming comparison ─────────────────────────────────────────────────────
-def stream_contract_comparison(pdf1_bytes: bytes, pdf2_bytes: bytes, api_key: str):
-    """
-    Generator yielding text chunks from Gemini as they stream in.
-    Auto-detects the best available model for this API key.
-    """
+def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, focus_list: list = None):
+    """Streams the analysis from Gemini."""
     client = _get_client(api_key)
-    prompt = _build_prompt()
-
-    config = types.GenerateContentConfig(
-        temperature=0.1,
-        max_output_tokens=65536,
-        response_mime_type="application/json",
-        response_schema=_response_schema,
-    )
-
-    # Convert PDFs to native Gemini Parts
-    pdf1_part = types.Part.from_bytes(data=pdf1_bytes, mime_type="application/pdf")
-    pdf2_part = types.Part.from_bytes(data=pdf2_bytes, mime_type="application/pdf")
+    prompt = get_recheck_prompt(focus_list)
     
-    # Construct multi-modal payload
+    # Convert Excel to CSV
+    csv_data = convert_excel_to_csv_with_letters(excel_bytes, focus_list)
+    
+    config = types.GenerateContentConfig(
+        temperature=0.2,
+        max_output_tokens=131072,
+    )
+    
+    pdf_part = types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
+    
     contents = [
-        "Please analyze the following two hotel contracts.\n"
-        "Contract 1 is the FIRST document. Contract 2 is the SECOND document. Never mix them.\n",
-        "\n\n--- CONTRACT 1 (Previous Year) ---\n",
-        pdf1_part,
-        "\n\n--- CONTRACT 2 (New Year) ---\n",
-        pdf2_part,
-        "\n\n--- INSTRUCTIONS ---\n",
+        "Please act as the Data Recheck Auditor. I am providing you with two documents:\n",
+        "1. The original Hotel Contract (PDF)\n",
+        pdf_part,
+        "\n2. The Data Team's Excel File (converted to CSV with Excel Column Letters in headers)\n",
+        csv_data,
+        "\n\n--- INSTRUCTIONS & RULES ---\n",
         prompt
     ]
-
-    # Auto-detect best model
+    
     best_model, all_models = detect_available_model(api_key)
     if not best_model:
-        # Last resort: try every fallback
         models_to_try = _FALLBACK_MODELS
     else:
-        # Try best first, then the rest of the detected list as fallback
         others = [m for m in all_models if m != best_model]
         models_to_try = [best_model] + others + _FALLBACK_MODELS
 
-    # Deduplicate while preserving order
+    # Deduplicate
     seen = set()
     unique_models = []
     for m in models_to_try:
@@ -374,34 +347,217 @@ def stream_contract_comparison(pdf1_bytes: bytes, pdf2_bytes: bytes, api_key: st
             seen.add(m)
             unique_models.append(m)
 
-    all_errors: list[str] = []
-    for model_name in unique_models:
+    all_errors = []
+    max_retries_per_run = 2 # Try the whole list twice if needed
+    
+    for attempt in range(max_retries_per_run):
+        for model_name in unique_models:
+            try:
+                for chunk in client.models.generate_content_stream(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                ):
+                    if chunk.text:
+                        yield chunk.text
+                return  # success — stop trying other models
+            except Exception as e:
+                err = str(e)
+                # Save error for summary
+                all_errors.append(f"{model_name}: {err}")
+                
+                if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                    yield f"\n\n[SYSTEM] Model {model_name} quota full (429). Trying next in 2s...\n"
+                    time.sleep(2) 
+                elif "400" in err and "token count" in err.lower():
+                    yield f"\n\n[SYSTEM] Data too large for {model_name} (400). Trying next...\n"
+                    continue
+                elif "404" in err:
+                    # Just move to next model
+                    pass
+                
+                yield "[RESET_STREAM]"
+                continue
+        
+        if attempt < max_retries_per_run - 1:
+            yield "\n\n[SYSTEM] All models busy. Waiting 10s for quota reset before final attempt...\n"
+            time.sleep(10)
+
+    # If all fail after all attempts
+    summary = " | ".join(all_errors[-5:]) # Show last 5 errors only for readability
+    yield f"\n\n**Error: Quota Exceeded across all models.**\nDetails: {summary}\n\nPlease wait 1 minute and try again."
+
+
+# ─── EXCEL GENERATION ENGINE [IN TEST] ────────────────────────────────────────
+
+def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
+    """
+    DIAGNOSTIC & STREAMING: Uses streaming (like Audit) to bypass 404s and lists models on failure.
+    """
+    client = genai.Client(api_key=api_key)
+    
+    contents = [
+        types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+        f"""
+        ACT AS: Senior Hotel Data Specialist.
+        TASK: Extract EVERY rate season, room type, promotion, and policy from the attached PDF into structured data.
+        
+        COLUMN RULES & FORMATTING (MIMIC EXAMPLE STRUCTURE EXACTLY):
+        1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000".
+        2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
+        3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
+        4. HTML FORMATTING REQUIRED (STRICT TEMPLATES): You MUST format cancellation_policy, child_policy, and meals_and_info using these EXACT HTML templates and colors:
+        
+        [cancellation_policy Template]
+        <p><strong>CANCELLATION : [SEASON NAME OR PERIOD]</strong></p>
+        <p>• Cancellation made [policy]</p>
+        <p>• <span style="color: #ff0000;">NO-SHOW/Early Check Out</span> : [policy]</p>
+        <p><span style="color: #ff0000;">*Remark : [details]</span></p>
+        
+        [child_policy Template]
+        <p><span style="color: #008000;"><strong>Room rate includes ABF for [xx] persons</strong></span></p>
+        <p><span style="color: #008000;"><strong>Maximum Occupancy : [XA / XA+XC]</strong></span></p>
+        <p>[policy]</p>
+        <p>in case have 2 Children;</p>
+        <p>if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;</p>
+        <p>1st child [policy]</p>
+        <p>2nd child [policy]</p>
+        <p>Adult [policy]</p>
+        <p><span style="color: #ff0000;"><strong>*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</strong></span></p>
+        
+        [meals_and_info Template]
+        <p><strong>MAIN CONTRACT [Year] : [Period]</strong></p>
+        <br/>
+        <p><span style="color: #ffcc00;"><strong>[ (only for Peak)</strong></span></p>
+        <p><strong>MIN. [XX] NIGHTS during [xx-xx]</strong></p>
+        <p><strong>NOT ALLOWED CHECK OUT on [xx]</strong></p>
+        <p><strong>※ Compulsory [Event Name] on [Date]</strong></p>
+        <p>Adult = [xxx] THB / Child ([age]) = [xxx] THB</p>
+        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+        <p><span style="color: #ffcc00;"><strong>]</strong></span></p>
+        <br/>
+        <p><strong>※ MEAL RATES</strong></p>
+        <p>Half Board (Lunch OR Dinner)</p>
+        <p>Full Board (Lunch AND Dinner)</p>
+        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+        <br/>
+        <p><strong>※ Early Bird</strong></p>
+        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
+        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
+        <p>• E.B [xx] Days, get [xx]% discount.</p>
+        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+        <br/>
+        <p><strong>※ Long Stay Offer / Minimum Nights Stay Offer</strong></p>
+        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
+        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
+        <p>• <span style="color: #008000;"><strong>#MIN. [X] NIGHTS</strong></span>, get [xx]% discount</p>
+        <br/>
+        <p><strong>※ Honeymooner / Anniversary</strong></p>
+        
+        5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Extract numbers correctly (e.g. 1400.0 or 3250). 
+        6. PERIOD SPLITTING LOGIC: Split the period into separate rows if conditions change within the season.
+        8. MULTI-ROW EXTRACTION (CRITICAL): You MUST extract EVERY SINGLE combination of room type and rate season (Low, High, Peak, etc.). A standard contract has multiple seasons and multiple rooms. You must output a JSON list with MANY objects (e.g., 20-50 objects), NOT just one. Do not summarize.
+        9. MISSING DATA: For any requested key that you don't find, output "". DO NOT output 0 or FALSE.
+        
+        OUTPUT FORMAT: A JSON LIST of objects.
+        REQUIRED KEYS (Columns G to AP only): {json.dumps(EXCEL_UPLOAD_COLUMNS[6:])}
+        CRITICAL: Return ONLY a valid JSON list. Do not include any markdown formatting, backticks, or conversational text.
+        """
+    ]
+    
+    available_models = []
+    try:
+        for m in client.models.list():
+            available_models.append(m.name)
+    except:
+        available_models = ["Could not list models"]
+
+    last_error = "Unknown Error"
+    # Use the same unique models logic as Audit
+    available_models_list = []
+    try:
+        best_model, all_models = detect_available_model(api_key)
+        others = [m for m in all_models if m != best_model]
+        models_to_try = [best_model] + others + _FALLBACK_MODELS
+        seen = set()
+        for m in models_to_try:
+            if m not in seen:
+                seen.add(m)
+                available_models_list.append(m)
+    except:
+        available_models_list = _FALLBACK_MODELS
+
+    for model_name in available_models_list:
         try:
+            # Enforce Strict JSON Mode for perfect table extraction
+            config = types.GenerateContentConfig(
+                temperature=0.1,
+                response_mime_type="application/json",
+                max_output_tokens=65536,
+            )
+            full_text = ""
             for chunk in client.models.generate_content_stream(
-                model=model_name,
+                model=model_name, 
                 contents=contents,
-                config=config,
+                config=config
             ):
                 if chunk.text:
-                    yield chunk.text
-            return  # success — stop trying other models
+                    full_text += chunk.text
+            
+            if not full_text:
+                continue
+
+            # Robust JSON extraction
+            json_match = re.search(r'(\[.*\])', full_text, re.DOTALL)
+            clean_json = json_match.group(1) if json_match else full_text.strip().replace('```json', '').replace('```', '')
+                
+            return json.loads(clean_json), None
+            
         except Exception as e:
             err = str(e)
-            all_errors.append(f"{model_name}: {err}")
-            # If we failed mid-stream, tell the UI to reset its buffer before the next model starts
-            yield "[RESET_STREAM]"
+            last_error = f"Model {model_name} failed: {err}"
+            if "429" in err:
+                time.sleep(1) # Small pause
             continue
+            
+    return [], f"All models exhausted. Last error: {last_error}"
 
-    # If we get here, ALL models failed
-    summary = " | ".join(all_errors)
-    safe = summary.replace('"', "'")
-    yield f'{{"error":"All models failed. Details: {safe}"}}'
-
-
-
-
-
-# ─── Non-streaming alias (backward compatible) ────────────────────────────────
-def run_contract_comparison(pdf1_bytes: bytes, pdf2_bytes: bytes, api_key: str) -> str:
-    """Collects all streaming chunks and returns the full JSON string."""
-    return "".join(stream_contract_comparison(pdf1_bytes, pdf2_bytes, api_key))
+def create_upload_excel(data_list: list):
+    """
+    Converts extracted JSON list into a formatted Excel file buffer. [IN TEST]
+    """
+    # Ensure all required columns exist in the DataFrame, even if missing from JSON
+    df = pd.DataFrame(data_list)
+    for col in EXCEL_UPLOAD_COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
+            
+    # Reorder to strict column layout
+    df = df[EXCEL_UPLOAD_COLUMNS]
+    
+    # 1. HARDCODED OVERRIDES (To prevent AI hallucination)
+    df['status'] = 'True'
+    df['refundable'] = 'False'
+    df['abf'] = 'Included'
+    df['action'] = 'insert'
+    df['tags'] = '[]'
+    df['created_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Optional logic: if AI left room_allotment empty, set it
+    df['room_allotment'] = df['room_allotment'].replace("", "Free Sales")
+    
+    # 2. FORCE EMPTY STRING ON COLUMNS THAT SHOULD NOT HAVE 0
+    empty_cols = [
+        'net_price_emerald', 'net_price_ruby', 'net_price_topaz',
+        'all_inclusive', 'baby_cot', 'cancellation_policy_net',
+        'early_check_in', 'extra_bed_no_abf', 'full_board', 'half_board',
+        'hotel_extra_fees', 'hotel_transfer', 'late_check_out'
+    ]
+    for col in empty_cols:
+        df[col] = ""
+        
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Upload')
+    
+    return output.getvalue()
