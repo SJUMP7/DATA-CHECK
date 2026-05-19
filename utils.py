@@ -28,14 +28,9 @@ _FALLBACK_MODELS = [
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
+    "gemini-1.5-flash-latest",
     "gemini-2.0-flash-001",
     "gemini-2.0-flash-lite-001",
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-flash-latest",
-    "gemini-flash-lite-latest",
-    "gemini-pro-latest",
     "gemini-1.5-pro",
     "gemini-1.5-pro-latest",
 ]
@@ -51,31 +46,41 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
         for m in client.models.list():
             name = getattr(m, "name", "") or ""
             short = name.replace("models/", "")
-            # Filter out models not suitable for heavy data tasks or with small context
-            skip_keywords = ["tts", "audio", "vision", "embedding", "tuning", "research", "banana", "lyria", "live"]
+            # Filter out non-text / preview / low-quota / specialized models
+            skip_keywords = [
+                "tts", "audio", "vision", "embedding", "tuning",
+                "research", "lyria", "live",
+                "image",    # image-gen models have tiny quota
+                "preview",  # preview models are unstable / low quota
+                "think",    # thinking models need special config
+                "exp",      # experimental = unreliable quota
+            ]
             if any(skip in short.lower() for skip in skip_keywords):
                 continue
+            # Only accept stable flash/pro text models
             if any(k in short for k in ["flash", "pro"]):
                 available.append(short)
     except Exception:
-        return "", [] # API Key is invalid or network error
+        return "", []  # API Key is invalid or network error
 
-    # Prefer models with HUGE context windows (1M+)
+    # Prefer stable, high-quota models
     preferred_order = [
-        "gemini-2.0-flash", 
-        "gemini-1.5-flash", 
-        "gemini-2.0-flash-lite", 
-        "gemini-1.5-pro",
-        "gemini-1.5-flash-8b"
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-2.0-flash-001",
     ]
     for preferred in preferred_order:
         if preferred in available:
             return preferred, available
 
     for m in _FALLBACK_MODELS:
-        if m in available: return m, available
+        if m in available:
+            return m, available
 
-    if available: return available[0], available
+    if available:
+        return available[0], available
     return "", []
 
 def validate_api_key(api_key: str) -> tuple[bool, str]:

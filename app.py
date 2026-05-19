@@ -505,70 +505,79 @@ st.markdown(f"""
 <div class="divider"></div>
 """, unsafe_allow_html=True)
 
-# ─── Upload Area ──────────────────────────────────────────────────────────────
-col1, col2 = st.columns(2, gap="large")
+# ─── Upload Area (auto-collapses when audit is complete) ───────────────────────
+# Expand when NOT auditing/done; collapse when report is ready
+_audit_done = st.session_state.get("audit_done", False)
+_is_auditing = st.session_state.get("is_auditing", False)
+_upload_expanded = not _audit_done  # collapse after audit finishes
 
-with col1:
-    st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Upload Contract (PDF)</div>', unsafe_allow_html=True)
-    pdf_file = st.file_uploader("Upload PDF", type=["pdf"], key="pdf", label_visibility="collapsed")
-    if pdf_file: st.success(f"File Ready: {pdf_file.name}")
-    st.markdown('</div>', unsafe_allow_html=True)
+with st.expander("📂 Upload Files & Configure Audit" if not _audit_done else "📂 Upload Files & Configure Audit  (คลิกเพื่อเปิด/ปิด)", expanded=_upload_expanded):
+    col1, col2 = st.columns(2, gap="large")
 
-with col2:
-    st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl">Upload Data (Excel)</div>', unsafe_allow_html=True)
-    excel_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="excel", label_visibility="collapsed")
-    if excel_file: st.success(f"File Ready: {excel_file.name}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    with col1:
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Upload Contract (PDF)</div>', unsafe_allow_html=True)
+        pdf_file = st.file_uploader("Upload PDF", type=["pdf"], key="pdf", label_visibility="collapsed")
+        if pdf_file: st.success(f"File Ready: {pdf_file.name}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# ─── Audit Focus Area ────────────────────────────────────────────────────────
-_, focus_col, _ = st.columns([0.5, 5, 0.5])
-with focus_col:
-    st.markdown(f'<div class="unified-card {anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl">Audit Focus & Scope</div>', unsafe_allow_html=True)
-    individual_options = [
-        "Net Price & Extra Beds",
-        "Cancellation Policy",
-        "Child Policy",
-        "Period & Seasons",
-        "Meals & Info",
-    ]
-    all_in_one = "All-in-One Full Scan"
-    focus_options = individual_options + [all_in_one]
+    with col2:
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl">Upload Data (Excel)</div>', unsafe_allow_html=True)
+        excel_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="excel", label_visibility="collapsed")
+        if excel_file: st.success(f"File Ready: {excel_file.name}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Initialize session state for focus tracking
-    if "prev_focus" not in st.session_state:
-        st.session_state.prev_focus = [all_in_one]
+    # ─── Audit Focus Area ────────────────────────────────────────────────────────
+    _, focus_col, _ = st.columns([0.5, 5, 0.5])
+    with focus_col:
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl">Audit Focus & Scope</div>', unsafe_allow_html=True)
+        individual_options = [
+            "Net Price & Extra Beds",
+            "Cancellation Policy",
+            "Child Policy",
+            "Period & Seasons",
+            "Meals & Info",
+        ]
+        all_in_one = "All-in-One Full Scan"
+        focus_options = individual_options + [all_in_one]
 
-    selected_focus = st.multiselect("Select what you want to audit", options=focus_options, default=st.session_state.prev_focus, label_visibility="collapsed")
+        if "prev_focus" not in st.session_state:
+            st.session_state.prev_focus = [all_in_one]
 
-    # Smart exclusive logic: All-in-One vs individual options
-    prev = st.session_state.prev_focus
-    if all_in_one in selected_focus and all_in_one not in prev:
-        # User just added All-in-One → clear individual selections
-        selected_focus = [all_in_one]
+        selected_focus = st.multiselect("Select what you want to audit", options=focus_options, default=st.session_state.prev_focus, label_visibility="collapsed")
+
+        prev = st.session_state.prev_focus
+        if all_in_one in selected_focus and all_in_one not in prev:
+            selected_focus = [all_in_one]
+            st.session_state.prev_focus = selected_focus
+            st.rerun()
+        elif all_in_one in selected_focus and any(o in selected_focus for o in individual_options) and any(o not in prev for o in selected_focus if o != all_in_one):
+            selected_focus = [o for o in selected_focus if o != all_in_one]
+            st.session_state.prev_focus = selected_focus
+            st.rerun()
         st.session_state.prev_focus = selected_focus
-        st.rerun()
-    elif all_in_one in selected_focus and any(o in selected_focus for o in individual_options) and any(o not in prev for o in selected_focus if o != all_in_one):
-        # User added an individual option while All-in-One was active → remove All-in-One
-        selected_focus = [o for o in selected_focus if o != all_in_one]
-        st.session_state.prev_focus = selected_focus
-        st.rerun()
-    st.session_state.prev_focus = selected_focus
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-# ─── Process Button ───────────────────────────────────────────────────────────
-ready = bool(pdf_file and excel_file and api_key)
+    # ─── Process Button ───────────────────────────────────────────────────────────
+    ready = bool(pdf_file and excel_file and api_key)
 
-_, btn_col, _ = st.columns([1.5, 3, 1.5])
-with btn_col:
-    if st.button("Start Specialized Audit  →", type="primary", use_container_width=True, disabled=not ready):
-        st.session_state.is_auditing = True
-        st.session_state.focus_list = selected_focus
+    _, btn_col, _ = st.columns([1.5, 3, 1.5])
+    with btn_col:
+        if st.button("Start Specialized Audit  →", type="primary", use_container_width=True, disabled=not ready):
+            st.session_state.is_auditing = True
+            st.session_state.audit_done = False
+            st.session_state.focus_list = selected_focus
 
-if not ready and not st.session_state.get("is_auditing"):
-    hint = "Upload both PDF and Excel files to continue" if not (pdf_file and excel_file) else "Add API Key in sidebar"
-    st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>", unsafe_allow_html=True)
+    if not ready and not st.session_state.get("is_auditing"):
+        hint = "Upload both PDF and Excel files to continue" if not (pdf_file and excel_file) else "Add API Key in sidebar"
+        st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>", unsafe_allow_html=True)
+
+# If audit_done is set but is_auditing is False (i.e., outside the expander), we still need file refs
+if _audit_done and not _is_auditing:
+    pdf_file = None
+    excel_file = None
+    selected_focus = st.session_state.get("focus_list", ["All-in-One Full Scan"])
 
 # ─── Experimental Generator Section [IN TEST] ────────────────────────────────
 st.markdown("<br><br>", unsafe_allow_html=True)
@@ -639,9 +648,6 @@ if st.session_state.get("is_auditing"):
 
     render_modal(5, "Initializing AI Engine...")
     
-    # After modal finishes, it will be cleared. We can inject a placeholder at the top 
-    # to show a 'Scroll Down' prompt if the user is still at the top.
-    top_notice_placeholder = st.empty()
     def apply_badges(text):
         # Restore our specialized UI tags
         text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
@@ -750,25 +756,76 @@ if st.session_state.get("is_auditing"):
         render_modal(100, "Audit Complete")
         modal_placeholder.empty()
         
-        # Inject jump button at the top
-        top_notice_placeholder.markdown(
-            '<div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(16,185,129,0.1);">'
-            '<div style="font-size: 16px; font-weight: 800; color: #047857; margin-bottom: 12px;">✅ ประมวลผลเสร็จสมบูรณ์!</div>'
-            '<a href="#audit-result-section" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">👇 คลิกเพื่อเลื่อนลงไปดู Report ด้านล่าง 👇</a>'
-            '</div>', 
-            unsafe_allow_html=True
-        )
+        # Mark audit as done — this will collapse the upload expander on rerun
+        st.session_state.audit_done = True
+        st.session_state.is_auditing = False
+        st.session_state._audit_result = full_response
+        st.rerun()
         
-        report_placeholder.empty()
-        render_final_report(full_response)
     except Exception as e:
         modal_placeholder.empty()
         st.error(f"Error: {str(e)}")
+        st.session_state.is_auditing = False
+
+# ─── Show Saved Report (after rerun with audit_done=True) ────────────────────
+if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"):
+    saved_result = st.session_state.get("_audit_result", "")
+    if saved_result:
+        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e8edf2">AUDIT REPORT</div>', unsafe_allow_html=True)
+        # Need to define render_final_report here too — call it inline
+        # We rebuild the report display logic
+        from utils import stream_recheck_analysis, validate_api_key
         
-    st.session_state.is_auditing = False
+        def _show_saved_report(full_text):
+            import re
+            st.markdown(
+                '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
+                unsafe_allow_html=True
+            )
+            st.toast("Audit Process Completed Successfully")
+            st.markdown('<a id="audit-result-section"></a>', unsafe_allow_html=True)
+            
+            score_match = re.search(r'คะแนนความถูกต้อง.*?(\d+(?:\.\d+)?)\s*%', full_text)
+            summary_match_text = re.search(r'บทสรุป.*?:\s*(.+)', full_text)
+            if score_match:
+                score = float(score_match.group(1))
+                color = "#10b981" if score >= 90 else "#f59e0b" if score >= 70 else "#ef4444"
+                summary_txt = summary_match_text.group(1).strip() if summary_match_text else ""
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, {color}15, {color}08); border: 2px solid {color}40; border-radius: 16px; padding: 28px 32px; margin: 24px 0; text-align: center;">
+                    <div style="font-size: 52px; font-weight: 900; color: {color}; line-height: 1;">{score:.0f}%</div>
+                    <div style="font-size: 13px; font-weight: 700; color: {color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Accuracy Score</div>
+                    {"<div style='font-size:14px;color:#64748b;margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
+                </div>""", unsafe_allow_html=True)
+            
+            parts = re.split(r'(?=<details>)|(?<=</details>)', full_text)
+            for part in parts:
+                stripped = part.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith('<details>'):
+                    summary_m = re.search(r'<summary>([\s\S]*?)</summary>', part)
+                    label = "HTML Code — คลิกเพื่อดู / Copy"
+                    if summary_m:
+                        raw_label = summary_m.group(1)
+                        label = re.sub(r'<[^>]+>', '', raw_label).strip()
+                    code_match = re.search(r'```html\s*([\s\S]*?)```', part)
+                    html_code = code_match.group(1).strip() if code_match else ""
+                    if not html_code:
+                        fallback = re.search(r'</summary>([\s\S]*?)</details>', part)
+                        html_code = fallback.group(1).strip() if fallback else ""
+                    with st.expander(label, expanded=False):
+                        if html_code:
+                            st.code(html_code, language="html")
+                else:
+                    st.markdown(f'<div class="output-section">{stripped}</div>', unsafe_allow_html=True)
+        
+        _show_saved_report(saved_result)
     
+    st.markdown("<br>", unsafe_allow_html=True)
     _, reset_btn, _ = st.columns([1.5, 3, 1.5])
     with reset_btn:
-        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("RESET / NEW UPLOAD", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus"]:
+                st.session_state.pop(key, None)
             st.rerun()
