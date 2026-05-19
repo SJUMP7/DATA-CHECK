@@ -4,6 +4,15 @@ from datetime import datetime
 import streamlit as st
 from utils import stream_recheck_analysis, validate_api_key
 
+# ─── Session State Key Constants (prevents silent typo bugs) ─────────────────
+_KEY_AUDIT_DONE   = "audit_done"
+_KEY_IS_AUDITING  = "is_auditing"
+_KEY_SHOW_UPLOAD  = "show_upload"
+_KEY_AUDIT_RESULT = "_audit_result"
+_KEY_FOCUS_LIST   = "focus_list"
+_KEY_PREV_FOCUS   = "prev_focus"
+
+
 st.set_page_config(
     page_title="Recheck Excel Data",
     layout="wide",
@@ -698,6 +707,29 @@ with exp_col_2:
 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
+
+# ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
+def apply_badges(text):
+    import re as _re
+    text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
+    text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
+    text = text.replace("&lt;div class=\"section-accent accent-verified\"&gt;", '<div class="section-accent accent-verified">')
+    text = text.replace("&lt;/div&gt;", '</div>')
+    text = text.replace("&lt;span class=\"badge", '<span class="badge')
+    text = text.replace("&lt;/span&gt;", '</span>')
+    text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
+    text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
+    text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
+    text = text.replace("[FAIL]", '<span class="badge badge-fail">FAIL</span>')
+    text = text.replace("[REVIEW]", '<span class="badge badge-review">REVIEW</span>')
+    text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
+    if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
+        text += "\n\n</div>\n\n"
+    # Spacing fix: ensure blank line before each bullet
+    text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
+    return text
+
+
 # ─── Analysis Output ──────────────────────────────────────────────────────────
 if st.session_state.get("is_auditing"):
     st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e8edf2">AUDIT REPORT</div>', unsafe_allow_html=True)
@@ -730,94 +762,6 @@ if st.session_state.get("is_auditing"):
 
     render_modal(5, "Initializing AI Engine...")
     
-    def apply_badges(text):
-        import re as _re
-        # Restore our specialized UI tags
-        text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
-        text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
-        text = text.replace("&lt;div class=\"section-accent accent-verified\"&gt;", '<div class="section-accent accent-verified">')
-        text = text.replace("&lt;/div&gt;", '</div>')
-        text = text.replace("&lt;span class=\"badge", '<span class="badge')
-        text = text.replace("&lt;/span&gt;", '</span>')
-        # Header Accents
-        text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
-        text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
-        text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
-        # Inline Badges
-        text = text.replace("[FAIL]", '<span class="badge badge-fail">FAIL</span>')
-        text = text.replace("[REVIEW]", '<span class="badge badge-review">REVIEW</span>')
-        text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
-        if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
-            text += "\n\n</div>\n\n"
-        # ── Spacing fix: ensure blank line before each bullet so Streamlit
-        #    renders them as separate <p> elements instead of one crammed block
-        text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
-        return text
-
-    def render_final_report(full_text):
-        """Parse AI response and render HTML code blocks as st.expander() - the ONLY way that works in Streamlit."""
-        # 1. Done banner
-        st.markdown(
-            '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Auto-scroll and visual cues
-        st.toast("Audit Process Completed Successfully")
-        
-        # Streamlit Cloud blocks JS parent scrolling due to iframe sandboxing (CORS).
-        # We place a native anchor here so we can link to it from above if needed.
-        st.markdown('<a id="audit-result-section"></a>', unsafe_allow_html=True)
-
-        # 2. Auto-detect score from AI text and render as score card
-        score_match = re.search(r'\u0e04\u0e30\u0e41\u0e19\u0e19\u0e04\u0e27\u0e32\u0e21\u0e16\u0e39\u0e01\u0e15\u0e49\u0e2d\u0e07.*?(\d+(?:\.\d+)?)\s*%', full_text)
-        summary_match_text = re.search(r'\u0e1a\u0e17\u0e2a\u0e23\u0e38\u0e1b.*?:\s*(.+)', full_text)
-        if score_match:
-            score_val = score_match.group(1)
-            score_color = "#22c55e" if float(score_val) >= 90 else "#f59e0b" if float(score_val) >= 70 else "#ef4444"
-            summary_text = summary_match_text.group(1).strip() if summary_match_text else ""
-            score_html = (
-                f'<div class="score-card">'
-                f'<div class="score-number" style="color:{score_color}">{score_val}%</div>'
-                f'<div class="score-meta">'
-                f'<div class="score-label">Accuracy Score</div>'
-                f'<div class="score-summary">{summary_text}</div>'
-                f'</div></div>'
-            )
-            st.markdown(score_html, unsafe_allow_html=True)
-
-        processed = apply_badges(full_text)
-        # Split on <details>...</details> blocks
-        parts = re.split(r'(<details>[\s\S]*?</details>)', processed)
-
-        for part in parts:
-            stripped = part.strip()
-            if not stripped:
-                continue
-
-            if stripped.startswith('<details>'):
-                # Extract button label from <summary>
-                summary_m = re.search(r'<summary>([\s\S]*?)</summary>', part)
-                label = "HTML Code — คลิกเพื่อดู / Copy"
-                if summary_m:
-                    raw_label = summary_m.group(1)
-                    label = re.sub(r'<[^>]+>', '', raw_label).strip()
-
-                # Extract HTML code from ```html ... ``` block
-                code_match = re.search(r'```html\s*([\s\S]*?)```', part)
-                html_code = code_match.group(1).strip() if code_match else ""
-                if not html_code:
-                    fallback = re.search(r'</summary>([\s\S]*?)</details>', part)
-                    html_code = fallback.group(1).strip() if fallback else ""
-
-                with st.expander(label, expanded=False):
-                    if html_code:
-                        st.code(html_code, language="html")
-            else:
-                st.markdown(
-                    f'<div class="output-section">{stripped}</div>',
-                    unsafe_allow_html=True
-                )
 
     full_response = ""
     chunk_count = 0
@@ -870,12 +814,9 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
     saved_result = st.session_state.get("_audit_result", "")
     if saved_result:
         st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e8edf2">AUDIT REPORT</div>', unsafe_allow_html=True)
-        # Need to define render_final_report here too — call it inline
-        # We rebuild the report display logic
-        from utils import stream_recheck_analysis, validate_api_key
+        # apply_badges is now a top-level function — accessible here directly
         
         def _show_saved_report(full_text):
-            import re
             st.markdown(
                 '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
                 unsafe_allow_html=True
@@ -896,7 +837,8 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
                     {"<div style='font-size:14px;color:#64748b;margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
                 </div>""", unsafe_allow_html=True)
             
-            parts = re.split(r'(?=<details>)|(?<=</details>)', full_text)
+            processed = apply_badges(full_text)
+            parts = re.split(r'(?=<details>)|(?<=</details>)', processed)
             for part in parts:
                 stripped = part.strip()
                 if not stripped:

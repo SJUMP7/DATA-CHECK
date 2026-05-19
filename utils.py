@@ -114,7 +114,8 @@ def _excel_col_name(n):
 
 def convert_excel_to_csv_with_letters(excel_bytes: bytes, focus_list: list = None) -> str:
     """Read Excel, drop empty/unused columns, and return CSV string where headers include Excel column letters."""
-    df = pd.read_excel(io.BytesIO(excel_bytes), header=None)
+    # sheet_name=0 reads the first sheet explicitly
+    df = pd.read_excel(io.BytesIO(excel_bytes), header=None, sheet_name=0)
     if df.empty: return ""
     
     letters = [_excel_col_name(i) for i in range(len(df.columns))]
@@ -186,7 +187,7 @@ Directives:
      | AO (ทุก Room Type, Peak Season) | 3 nights | 7 nights | ... |
    If 2 or more rows have the SAME column, SAME error, SAME fix — MERGE into ONE row. Write location as "ทุก Room Type" or "Row 5-15" etc.
 8. IGNORE FORMATTING & DECIMALS (CRITICAL): Do NOT flag an error if the difference is purely numerical formatting. For example: `1600` is EXACTLY THE SAME as `1600.00`. `7352.5` is EXACTLY THE SAME as `7352.50`. If the factual numeric value is identical, you MUST consider it CORRECT. Do NOT flag it as FAIL. Do NOT ask the user to "ปรับรูปแบบตัวเลขให้เป็นทศนิยม 2 ตำแหน่ง".
-10. HTML Code Block Placement (CRITICAL): For policy columns (AA, AD, AO), when you find an error:
+9. HTML Code Block Placement (CRITICAL): For policy columns (AA, AD, AO), when you find an error:
    - In the table row, write ONLY a plain-text summary in the "ข้อมูลที่ถูกต้อง" column.
    - AFTER the table ends (not inside a cell!), add the HTML dropdown on its own line like this:
 
@@ -336,7 +337,7 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
     
     config = types.GenerateContentConfig(
         temperature=0.2,
-        max_output_tokens=131072,
+        max_output_tokens=32768,  # 32K is enough for audit reports
     )
     
     pdf_part = types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
@@ -441,7 +442,7 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
     """
     DIAGNOSTIC & STREAMING: Uses streaming (like Audit) to bypass 404s and lists models on failure.
     """
-    client = genai.Client(api_key=api_key)
+    client = _get_client(api_key)
     
     contents = [
         types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
@@ -512,13 +513,6 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
         """
     ]
     
-    available_models = []
-    try:
-        for m in client.models.list():
-            available_models.append(m.name)
-    except:
-        available_models = ["Could not list models"]
-
     last_error = "Unknown Error"
     # Use the same unique models logic as Audit
     available_models_list = []
@@ -540,7 +534,7 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
             config = types.GenerateContentConfig(
                 temperature=0.1,
                 response_mime_type="application/json",
-                max_output_tokens=65536,
+                max_output_tokens=32768,  # JSON output rarely exceeds 20K tokens
             )
             full_text = ""
             for chunk in client.models.generate_content_stream(
@@ -554,10 +548,13 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
             if not full_text:
                 continue
 
-            # Robust JSON extraction
-            json_match = re.search(r'(\[.*\])', full_text, re.DOTALL)
-            clean_json = json_match.group(1) if json_match else full_text.strip().replace('```json', '').replace('```', '')
-                
+            # Robust JSON extraction: find outermost [ ... ] by position
+            json_start = full_text.find('[')
+            json_end   = full_text.rfind(']')
+            if json_start != -1 and json_end != -1 and json_end > json_start:
+                clean_json = full_text[json_start:json_end + 1].strip()
+            else:
+                clean_json = full_text.strip().replace('```json', '').replace('```', '').strip()
             return json.loads(clean_json), None
             
         except Exception as e:
