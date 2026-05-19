@@ -52,47 +52,108 @@ def load_css():
     .sub { font-size: 20px; color: var(--text-color); opacity: 0.6; max-width: 600px; margin: 0 auto; line-height: 1.6; font-weight: 400; }
 
     /* Upload Area & Cards */
-    .unified-card { background: var(--background-color); border: 1px solid var(--secondary-background-color); border-radius: 16px; padding: 24px; transition: all .3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,.02); margin-bottom: 20px; }
-    .unified-card:hover { border-color: rgba(59, 130, 246, 0.4); }
-
-    .c-eye { 
-        font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; 
-        color: #10b981; margin-bottom: 8px; opacity: 0.7;
+    .upload-panel {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        padding: 28px 28px 20px;
+        background: var(--background-color);
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
     }
-    .c-ttl { 
-        font-size: 20px; font-weight: 800; color: var(--text-color); margin-bottom: 24px; 
-        letter-spacing: -0.03em; border-left: 4px solid #10b981; padding-left: 14px; line-height: 1.2;
+    .upload-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+    .upload-panel-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .unified-card {
+        background: transparent;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 12px;
+        padding: 20px 22px;
+        transition: border-color .25s ease;
+        margin-bottom: 16px;
+    }
+    .unified-card:hover { border-color: rgba(59, 130, 246, 0.35); }
+    .c-eye {
+        font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+        color: #10b981; margin-bottom: 6px;
+    }
+    .c-ttl {
+        font-size: 15px; font-weight: 700; color: var(--text-color); margin-bottom: 18px;
+        letter-spacing: -0.02em;
+        border-left: 2px solid #10b981; padding-left: 10px; line-height: 1.3;
+    }
+
+    /* Hide/show upload panel */
+    .upload-hidden { display: none !important; }
+
+    /* Override Streamlit expander to be invisible if ever used */
+    [data-testid="stExpander"] {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    [data-testid="stExpander"] > div:first-child {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
     }
 
     div[data-testid="stFileUploader"] { width: 100% !important; }
     div[data-testid="stFileUploader"] > section {
-        background: var(--secondary-background-color) !important;
-        border: 1px dashed rgba(156, 163, 175, 0.4) !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
+        background: transparent !important;
+        border: 1px dashed rgba(148, 163, 184, 0.3) !important;
+        border-radius: 10px !important;
+        padding: 12px !important;
         transition: all 0.2s ease !important;
     }
     div[data-testid="stFileUploader"] > section:hover {
         border-color: #3b82f6 !important;
-        background: rgba(59, 130, 246, 0.05) !important;
     }
     div[data-testid="stFileUploader"] small { display: none !important; }
 
+    /* New audit toggle button */
+    .audit-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #64748b;
+        background: transparent;
+        border: 1px solid rgba(148,163,184,0.25);
+        border-radius: 8px;
+        padding: 6px 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .audit-toggle-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+
     /* Gradient Divider */
     .divider {
-        height: 1px; margin: 10px 0 30px; 
-        background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), rgba(147,51,234,0.3), transparent); 
-        box-shadow: 0 4px 16px rgba(59,130,246,0.15), 0 1px 8px rgba(147,51,234,0.1);
+        height: 1px; margin: 10px 0 30px;
+        background: linear-gradient(90deg, transparent, rgba(59,130,246,0.2), rgba(147,51,234,0.2), transparent);
     }
 
     /* Button */
     button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #0ea5e9, #3b82f6) !important; color: #fff !important; border: none !important;
-        border-radius: 12px !important; font-size: 16px !important; font-weight: 600 !important; padding: 12px 24px !important;
-        box-shadow: 0 4px 14px rgba(59,130,246,.3) !important; transition: all .2s ease !important;
+        border-radius: 10px !important; font-size: 14px !important; font-weight: 600 !important; padding: 12px 24px !important;
+        box-shadow: 0 4px 14px rgba(59,130,246,.25) !important; transition: all .2s ease !important; letter-spacing: 0.01em !important;
     }
-    button[data-testid="baseButton-primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59,130,246,.4) !important; }
-    button[data-testid="baseButton-primary"]:disabled { background: var(--secondary-background-color) !important; color: gray !important; box-shadow: none !important; transform: none; }
+    button[data-testid="baseButton-primary"]:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,.35) !important; }
+    button[data-testid="baseButton-primary"]:disabled { background: rgba(148,163,184,0.1) !important; color: #94a3b8 !important; box-shadow: none !important; transform: none; }
 
     /* ─── Multiselect / Dropdown Fix ─────────────────────────────────── */
     /* Selected tag pills */
@@ -505,31 +566,48 @@ st.markdown(f"""
 <div class="divider"></div>
 """, unsafe_allow_html=True)
 
-# ─── Upload Area (auto-collapses when audit is complete) ───────────────────────
-# Expand when NOT auditing/done; collapse when report is ready
+# ─── Upload Area ───────────────────────────────────────────────────────────────
 _audit_done = st.session_state.get("audit_done", False)
 _is_auditing = st.session_state.get("is_auditing", False)
-_upload_expanded = not _audit_done  # collapse after audit finishes
 
-with st.expander("📂 Upload Files & Configure Audit" if not _audit_done else "📂 Upload Files & Configure Audit  (คลิกเพื่อเปิด/ปิด)", expanded=_upload_expanded):
+# Toggle logic: show_upload defaults True if not audited yet
+if "show_upload" not in st.session_state:
+    st.session_state.show_upload = True
+if _audit_done:
+    st.session_state.show_upload = False
+
+_show = st.session_state.show_upload
+
+# Render a clean minimal header row
+if _audit_done:
+    _left, _right = st.columns([6, 1])
+    with _right:
+        if st.button("New Audit", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload"]:
+                st.session_state.pop(key, None)
+            st.rerun()
+
+if _show:
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
-        st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Upload Contract (PDF)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Contract PDF</div>', unsafe_allow_html=True)
         pdf_file = st.file_uploader("Upload PDF", type=["pdf"], key="pdf", label_visibility="collapsed")
-        if pdf_file: st.success(f"File Ready: {pdf_file.name}")
+        if pdf_file:
+            st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{pdf_file.name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl">Upload Data (Excel)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl">Data Excel</div>', unsafe_allow_html=True)
         excel_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="excel", label_visibility="collapsed")
-        if excel_file: st.success(f"File Ready: {excel_file.name}")
+        if excel_file:
+            st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{excel_file.name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ─── Audit Focus Area ────────────────────────────────────────────────────────
+    # ─── Audit Focus ──────────────────────────────────────────────────────────
     _, focus_col, _ = st.columns([0.5, 5, 0.5])
     with focus_col:
-        st.markdown(f'<div class="unified-card {anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl">Audit Focus & Scope</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl">Audit Scope</div>', unsafe_allow_html=True)
         individual_options = [
             "Net Price & Extra Beds",
             "Cancellation Policy",
@@ -543,8 +621,10 @@ with st.expander("📂 Upload Files & Configure Audit" if not _audit_done else "
         if "prev_focus" not in st.session_state:
             st.session_state.prev_focus = [all_in_one]
 
-        selected_focus = st.multiselect("Select what you want to audit", options=focus_options, default=st.session_state.prev_focus, label_visibility="collapsed")
-
+        selected_focus = st.multiselect(
+            "Audit scope", options=focus_options,
+            default=st.session_state.prev_focus, label_visibility="collapsed"
+        )
         prev = st.session_state.prev_focus
         if all_in_one in selected_focus and all_in_one not in prev:
             selected_focus = [all_in_one]
@@ -559,25 +639,25 @@ with st.expander("📂 Upload Files & Configure Audit" if not _audit_done else "
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ─── Process Button ───────────────────────────────────────────────────────────
+    # ─── Process Button ────────────────────────────────────────────────────────
     ready = bool(pdf_file and excel_file and api_key)
-
     _, btn_col, _ = st.columns([1.5, 3, 1.5])
     with btn_col:
-        if st.button("Start Specialized Audit  →", type="primary", use_container_width=True, disabled=not ready):
+        if st.button("Start Audit", type="primary", use_container_width=True, disabled=not ready):
             st.session_state.is_auditing = True
             st.session_state.audit_done = False
             st.session_state.focus_list = selected_focus
 
     if not ready and not st.session_state.get("is_auditing"):
-        hint = "Upload both PDF and Excel files to continue" if not (pdf_file and excel_file) else "Add API Key in sidebar"
-        st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>", unsafe_allow_html=True)
+        hint = "Upload PDF and Excel files to continue" if not (pdf_file and excel_file) else "Enter API Key in sidebar"
+        st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
 
-# If audit_done is set but is_auditing is False (i.e., outside the expander), we still need file refs
-if _audit_done and not _is_auditing:
+else:
+    # Audit done — files no longer accessible; use session state refs
     pdf_file = None
     excel_file = None
     selected_focus = st.session_state.get("focus_list", ["All-in-One Full Scan"])
+
 
 # ─── Experimental Generator Section [IN TEST] ────────────────────────────────
 st.markdown("<br><br>", unsafe_allow_html=True)
