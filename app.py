@@ -1,5 +1,7 @@
 import os
 import re
+import json
+import copy
 from datetime import datetime
 import streamlit as st
 from utils import stream_recheck_analysis, validate_api_key
@@ -24,6 +26,33 @@ def get_honest_milestone(full_text, chunk_count):
     perc = min(90 + (chunk_count * 0.3), 98)
     return perc, "Assembling Final Audit Score..."
 
+# ─── Clean & Repair JSON helper ───────────────────────────────────────────────
+def _clean_json(raw: str) -> str:
+    text = re.sub(r"```(?:json)?", "", raw).strip()
+    s, e = text.find("{"), text.rfind("}")
+    if s != -1 and e > s:
+        text = text[s: e + 1]
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    return text
+
+def _repair_json(text: str) -> str:
+    if not text: return text
+    text = re.sub(r',\s*([\]\}])', r'\1', text)
+    text = re.sub(r',?\s*"[^"]*"\s*:\s*[^,}\]]*$', '', text)
+    text = re.sub(r',?\s*"[^"]*"\s*:\s*$', '', text)
+    text = re.sub(r',?\s*$', '', text)
+    
+    stack = []
+    for char in text:
+        if char == '{': stack.append('}')
+        elif char == '[': stack.append(']')
+        elif char in ('}', ']'):
+            if stack and stack[-1] == char:
+                stack.pop()
+    if stack:
+        text += "".join(reversed(stack))
+    return text
+
 # ─── Interactive Cancellation Interrupt (C2 & H2) ───────────────────────────
 if "cancel_requested" not in st.session_state:
     st.session_state.cancel_requested = False
@@ -39,9 +68,9 @@ if st.session_state.get("cancel_btn_trigger") or st.session_state.get("cancel_re
 if st.session_state.get("confirm_reset", False):
     st.markdown("""
         <div class="fixed-overlay"></div>
-        <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: rgba(11, 15, 25, 0.95) !important;">
+        <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: color-mix(in srgb, var(--secondary-background-color) 95%, transparent) !important;">
             <h3 style="color: #ef4444 !important;">ยืนยันการล้างข้อมูล</h3>
-            <p style="margin-bottom: 24px; color: #94a3b8 !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+            <p style="margin-bottom: 24px; color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -59,6 +88,33 @@ if st.session_state.get("confirm_reset", False):
             st.session_state.confirm_reset = False
             st.rerun()
     st.stop()
+
+# ─── Dynamic Module Loading for COMPARE CONTRACT ─────────────────────────────
+import importlib.util
+
+if "active_app" not in st.session_state:
+    st.session_state.active_app = "DATA AUDITOR"
+
+if "app_selector_open" not in st.session_state:
+    st.session_state.app_selector_open = False
+
+compare_utils = None
+compare_excel = None
+try:
+    _compare_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../COMPARE CONTRACT"))
+    _utils_path = os.path.join(_compare_dir, "utils.py")
+    if os.path.exists(_utils_path):
+        _spec_utils = importlib.util.spec_from_file_location("compare_utils", _utils_path)
+        compare_utils = importlib.util.module_from_spec(_spec_utils)
+        _spec_utils.loader.exec_module(compare_utils)
+    
+    _excel_path = os.path.join(_compare_dir, "excel_generator.py")
+    if os.path.exists(_excel_path):
+        _spec_excel = importlib.util.spec_from_file_location("compare_excel", _excel_path)
+        compare_excel = importlib.util.module_from_spec(_spec_excel)
+        _spec_excel.loader.exec_module(compare_excel)
+except Exception as e:
+    pass
 
 # ─── Session State Key Constants (prevents silent typo bugs) ─────────────────
 _KEY_AUDIT_DONE   = "audit_done"
@@ -83,8 +139,12 @@ def load_css():
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
     
     html { scroll-behavior: smooth !important; }
-    html, body, [class*="css"] {
+    html, body, p, span, label, li, th, td, div[data-testid="stMarkdownContainer"] p {
         font-family: 'Inter', sans-serif !important;
+        color: var(--text-color) !important;
+    }
+    /* Explicitly ensure st.spinner label is readable in dark/light mode */
+    div[data-testid="stSpinner"], div[class*="stSpinner"] p, .stSpinner, div[data-testid="stSpinner"] > div > div {
         color: var(--text-color) !important;
     }
 
@@ -207,7 +267,7 @@ def load_css():
         -webkit-text-fill-color: transparent;
         display: inline-block;
     }
-    .sub { font-size: 16px; color: color-mix(in srgb, var(--text-color) 60%, transparent); max-width: 600px; margin: 0 auto; line-height: 1.65; font-weight: 400; letter-spacing: 0.01em; }
+    .sub { font-size: 16px; color: var(--text-color) !important; opacity: 0.75 !important; max-width: 600px; margin: 0 auto; line-height: 1.65; font-weight: 400; letter-spacing: 0.01em; }
 
     /* Upload Area & Cards */
     .unified-card {
@@ -573,6 +633,225 @@ def load_css():
     @keyframes modalSlideIn { 0% { opacity: 0; transform: translate(-50%, -40%) scale(0.95); } 100% { opacity: 1; transform: translate(-50%, -45%) scale(1); } }
     
     [data-testid="stStatusWidget"] { display: none !important; }
+
+    /* --- Corporate Sidebar Application Selector Styles --- */
+    .app-selector-header-container {
+        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        transition: all 0.2s ease !important;
+        cursor: pointer;
+        position: relative;
+        z-index: 5;
+    }
+    .app-selector-header-container:hover {
+        background: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+    }
+    .app-selector-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+    }
+    .app-selector-header .logo-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800;
+        font-size: 13px;
+        color: #ffffff !important;
+        flex-shrink: 0;
+    }
+    .da-logo {
+        background: linear-gradient(135deg, #10b981, #3b82f6) !important;
+    }
+    .cc-logo {
+        background: linear-gradient(135deg, #8b5cf6, #3b82f6) !important;
+    }
+    .app-selector-header .text-block {
+        flex-grow: 1;
+        text-align: left;
+        line-height: 1.2;
+    }
+    .app-selector-header .main-title {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        color: var(--text-color) !important;
+    }
+    .app-selector-header .sub-title {
+        font-size: 9.5px;
+        color: color-mix(in srgb, var(--text-color) 50%, transparent) !important;
+        font-weight: 500;
+        margin-top: 2px;
+    }
+    .app-selector-header .chevron {
+        font-size: 10px;
+        color: color-mix(in srgb, var(--text-color) 40%, transparent) !important;
+        flex-shrink: 0;
+    }
+
+    /* Transparent Button Overlays */
+    .transparent-btn-wrapper {
+        position: relative;
+        margin-top: -84px; /* Overlay the 60px header container + margins! */
+        height: 60px;
+        margin-bottom: 24px;
+        z-index: 10;
+    }
+    .transparent-btn-wrapper button {
+        background: transparent !important;
+        border: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        opacity: 0 !important;
+        cursor: pointer !important;
+    }
+
+    /* Floating Selector Popup Menu Card */
+    .app-popup-card {
+        position: fixed;
+        top: 96px; /* Positioned directly below the header container */
+        left: 20px;
+        width: 310px;
+        background: color-mix(in srgb, var(--secondary-background-color) 96%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent) !important;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35) !important;
+        z-index: 999995;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        animation: popupSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes popupSlideIn {
+        0% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .popup-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 6px 12px 6px;
+    }
+    .popup-header .building-icon {
+        font-size: 16px;
+        color: #3b82f6 !important;
+    }
+    .popup-header .header-text {
+        line-height: 1.25;
+        text-align: left;
+    }
+    .popup-header .title {
+        font-family: 'Outfit', sans-serif !important;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-color) !important;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .popup-header .subtitle {
+        font-size: 11px;
+        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
+    }
+
+    .divider-line {
+        height: 1px;
+        background: color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        margin: 0 0 10px 0;
+    }
+
+    /* Popup Items */
+    .app-item-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+        background: transparent;
+        border: 1px solid transparent;
+        transition: all 0.2s ease !important;
+        margin-bottom: 8px;
+        position: relative;
+    }
+    .app-item-card:hover {
+        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important;
+        border-color: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+    }
+    .app-item-card.active-item {
+        background: color-mix(in srgb, #3b82f6 8%, transparent) !important;
+        border-color: color-mix(in srgb, #3b82f6 25%, transparent) !important;
+    }
+    .app-item-card .item-text {
+        flex-grow: 1;
+        text-align: left;
+        line-height: 1.3;
+    }
+    .app-item-card .item-title {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 700;
+        font-size: 12.5px;
+        color: var(--text-color) !important;
+    }
+    .app-item-card.active-item .item-title {
+        color: #3b82f6 !important;
+    }
+    .app-item-card .item-subtitle {
+        font-size: 10.5px;
+        color: color-mix(in srgb, var(--text-color) 50%, transparent) !important;
+    }
+    .app-item-card .active-badge {
+        background: #4f46e5 !important;
+        color: #ffffff !important;
+        font-size: 8.5px !important;
+        font-weight: 700 !important;
+        padding: 3px 8px !important;
+        border-radius: 20px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        flex-shrink: 0;
+    }
+
+    /* Transparent click wrappers for selector items */
+    .click-item-wrapper {
+        position: fixed;
+        width: 276px;
+        height: 60px;
+        z-index: 999997;
+    }
+    .click-item-wrapper button {
+        background: transparent !important;
+        border: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        opacity: 0 !important;
+        cursor: pointer !important;
+    }
+
+    /* Overlay Backdrop wrapper */
+    .close-overlay-wrapper {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: 999990;
+    }
+    .close-overlay-wrapper button {
+        background: transparent !important;
+        border: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        opacity: 0 !important;
+        cursor: pointer !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -664,11 +943,113 @@ def apply_badges(text):
     return text
 
 with st.sidebar:
-    st.markdown("<div style='font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>EXCEL AUDITOR</div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 12px; font-weight: 500; opacity: 0.5; margin-bottom: 24px;'>Data Recheck Tool</div>", unsafe_allow_html=True)
-    
+    # ─── Sidebar Selector Markup and Overlays ───
+    active_app = st.session_state.active_app
+    if active_app == "DATA AUDITOR":
+        active_logo = "DA"
+        logo_class = "da-logo"
+        active_title = "DATA AUDITOR"
+        active_subtitle = "EXCEL AUDITING PORTAL"
+    else:
+        active_logo = "CC"
+        logo_class = "cc-logo"
+        active_title = "CONTRACT COMPARE"
+        active_subtitle = "CONTRACT COMPARISON"
+
+    # 1. Overlay Backdrop wrapper if open
+    if st.session_state.get("app_selector_open", False):
+        st.markdown('<div class="close-overlay-wrapper">', unsafe_allow_html=True)
+        if st.button("Close Selector", key="close_selector_overlay", use_container_width=True):
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # 2. Launcher Header UI
+    chevron_symbol = "▼"
+    st.markdown(f"""
+    <div class="app-selector-header-container">
+        <div class="app-selector-header">
+            <div class="logo-circle {logo_class}">{active_logo}</div>
+            <div class="text-block">
+                <div class="main-title">{active_title}</div>
+                <div class="sub-title">{active_subtitle}</div>
+            </div>
+            <div class="chevron">{chevron_symbol}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 3. Transparent Overlay Button for Launcher Header
+    st.markdown('<div class="transparent-btn-wrapper">', unsafe_allow_html=True)
+    if st.button("Toggle Selector Menu", key="toggle_selector_btn", use_container_width=True):
+        st.session_state.app_selector_open = not st.session_state.app_selector_open
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 4. Floating Popup Card Menu
+    if st.session_state.get("app_selector_open", False):
+        da_active = "active-item" if active_app == "DATA AUDITOR" else ""
+        cc_active = "active-item" if active_app == "CONTRACT COMPARE" else ""
+        da_badge = '<span class="active-badge">Active</span>' if active_app == "DATA AUDITOR" else ""
+        cc_badge = '<span class="active-badge">Active</span>' if active_app == "CONTRACT COMPARE" else ""
+        
+        st.markdown(f"""
+        <div class="app-popup-card">
+            <div class="popup-header">
+                <div class="building-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6; vertical-align: middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="16"></line><line x1="15" y1="22" x2="15" y2="16"></line><line x1="9" y1="16" x2="15" y2="16"></line><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M16 14h.01"></path></svg>
+                </div>
+                <div class="header-text">
+                    <div class="title">APPLICATIONS</div>
+                    <div class="subtitle">Select active auditor application</div>
+                </div>
+            </div>
+            <div class="divider-line"></div>
+            
+            <!-- DATA AUDITOR ITEM -->
+            <div class="app-item-card {da_active}">
+                <div class="logo-circle da-logo">DA</div>
+                <div class="item-text">
+                    <div class="item-title">DATA AUDITOR</div>
+                    <div class="item-subtitle">Excel Rate Auditing</div>
+                </div>
+                {da_badge}
+            </div>
+            
+            <!-- CONTRACT COMPARE ITEM -->
+            <div class="app-item-card {cc_active}" style="margin-top: 8px;">
+                <div class="logo-circle cc-logo">CC</div>
+                <div class="item-text">
+                    <div class="item-title">CONTRACT COMPARE</div>
+                    <div class="item-subtitle">PDF Comparison Engine</div>
+                </div>
+                {cc_badge}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 5. Floating Popup Card Click Overlays
+        st.markdown('<div class="click-item-wrapper" style="top: 156px; left: 36px;">', unsafe_allow_html=True)
+        if st.button("Select Data Auditor App", key="select_da_app", use_container_width=True):
+            st.session_state.active_app = "DATA AUDITOR"
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="click-item-wrapper" style="top: 224px; left: 36px;">', unsafe_allow_html=True)
+        if st.button("Select Contract Compare App", key="select_cc_app", use_container_width=True):
+            st.session_state.active_app = "CONTRACT COMPARE"
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ─── Navigation Radio Page Routing ───
     st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>NAVIGATION</div>", unsafe_allow_html=True)
-    page_options = ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]
+    if active_app == "DATA AUDITOR":
+        page_options = ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]
+    else:
+        page_options = ["CONTRACT COMPARE"]
+        
     selected_page = st.radio("Navigation", page_options, label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -691,6 +1072,36 @@ with st.sidebar:
             else:
                 st.caption("API KEY REQUIRED FOR ANALYSIS")
 
+    # ─── Recent Comparison History (Sidebar) ───
+    if active_app == "CONTRACT COMPARE":
+        st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px; margin-top: 32px;'>RECENT AUDITS</div>", unsafe_allow_html=True)
+        os.makedirs("history", exist_ok=True)
+        history_files = sorted([f for f in os.listdir("history") if f.endswith(".xlsx")], reverse=True)
+        if not history_files:
+            st.markdown("<div style='font-size: 11px; opacity: 0.5; padding-left: 4px;'>No recent audits found.</div>", unsafe_allow_html=True)
+        else:
+            for hf in history_files[:8]:
+                if hf.startswith("Comparison_"):
+                    display_name = hf.split('_vs_')[0].replace('Comparison_', '')
+                    if len(display_name) > 22:
+                        display_name = display_name[:20] + "..."
+                else:
+                    parts = hf.rsplit("_", 2)
+                    display_name = parts[0][:22] if len(parts) >= 3 else hf[:22]
+                
+                try:
+                    with open(os.path.join("history", hf), "rb") as f:
+                        st.download_button(
+                            label=f"{display_name.upper()}",
+                            data=f.read(),
+                            file_name=hf,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="history_" + hf,
+                            use_container_width=True
+                        )
+                except Exception:
+                    pass
+
 
 
 # ─── State Control for Streamlit Re-runs ──────────────────────────────────────
@@ -709,11 +1120,19 @@ if selected_page == "CONTRACT AUDITOR":
     </div>
     <div class="divider"></div>
     """, unsafe_allow_html=True)
-else:
+elif selected_page == "AI EXCEL GENERATOR":
     st.markdown(f"""
     <div class="hero {anim_class}">
       <div class="h1">EXCEL GENERATOR</div>
       <div class="sub">Generate Hotel Upload Files from PDF.</div>
+    </div>
+    <div class="divider"></div>
+    """, unsafe_allow_html=True)
+elif selected_page == "CONTRACT COMPARE":
+    st.markdown(f"""
+    <div class="hero {anim_class}">
+      <div class="h1">CONTRACT COMPARE</div>
+      <div class="sub">AI-Powered Contract Comparison & Revision Verification.</div>
     </div>
     <div class="divider"></div>
     """, unsafe_allow_html=True)
@@ -784,8 +1203,332 @@ if selected_page == "AI EXCEL GENERATOR":
 
     if not gen_ready:
         hint = "Upload PDF file to continue" if not has_pdf_gen else "Enter API Key in sidebar"
-        st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center;color:color-mix(in srgb, var(--text-color) 50%, transparent);font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
         
+    st.stop()
+
+elif selected_page == "CONTRACT COMPARE":
+    # ─── Interrupt Check for Cancellation ───
+    if "cc_cancel_requested" not in st.session_state:
+        st.session_state.cc_cancel_requested = False
+
+    if st.session_state.get("cc_cancel_btn_trigger") or st.session_state.get("cc_cancel_requested"):
+        st.session_state.cc_started = False
+        st.session_state.cc_cancel_requested = False
+        st.session_state.pop("cc_cancel_btn_trigger", None)
+        st.rerun()
+
+    is_focus_mode = st.session_state.get("cc_review_mode") or st.session_state.get("cc_report_ready")
+
+    up1 = None
+    up2 = None
+
+    if not is_focus_mode:
+        st.markdown("<div style='font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-color);opacity:0.5;margin-bottom:16px;'>Upload Contracts</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2, gap="large")
+        with c1:
+            st.markdown('<div class="unified-card"><div class="c-eye">STEP 1</div><div class="c-ttl">Previous Contract</div>', unsafe_allow_html=True)
+            up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
+            if up1:
+                st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up1.name}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with c2:
+            st.markdown('<div class="unified-card"><div class="c-eye">STEP 2</div><div class="c-ttl">New Contract</div>', unsafe_allow_html=True)
+            up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
+            if up2:
+                st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up2.name}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    cta_placeholder = st.empty()
+
+    # ─── CTA ──────────────────────────────────────────────────────────────────
+    ready = bool(up1 and up2 and api_key)
+
+    if not is_focus_mode:
+        up1_name = up1.name if up1 else ""
+        up2_name = up2.name if up2 else ""
+        if "cc_last_up1" not in st.session_state or st.session_state.cc_last_up1 != up1_name or st.session_state.cc_last_up2 != up2_name:
+            st.session_state.cc_started = False
+            st.session_state.cc_review_mode = False
+            st.session_state.cc_report_ready = False
+            st.session_state.cc_extracted_data = None
+            st.session_state.cc_last_up1 = up1_name
+            st.session_state.cc_last_up2 = up2_name
+
+        with cta_placeholder.container():
+            _, btn_col, _ = st.columns([1.5, 3, 1.5])
+            with btn_col:
+                if st.button("Compare Contracts  →", type="primary", use_container_width=True, disabled=not ready, key="start_compare_btn"):
+                    st.session_state.cc_started = True
+                    st.rerun()
+                
+                if not ready:
+                    hint = "Upload both contracts to continue" if not (up1 and up2) else "Add API Key in sidebar"
+                    st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>",
+                                unsafe_allow_html=True)
+
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+    else:
+        # FOCUS MODE is active: Show a Back/Reset button at the top instead of the uploaders
+        _, reset_col, _ = st.columns([1.5, 3, 1.5])
+        with reset_col:
+            if st.button("← Upload Different Contracts", use_container_width=True, key="reset_compare_btn"):
+                st.session_state.cc_started = False
+                st.session_state.cc_review_mode = False
+                st.session_state.cc_report_ready = False
+                st.session_state.cc_extracted_data = None
+                st.rerun()
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    # ─── Processing ───────────────────────────────────────────────────────────
+    if st.session_state.get("cc_started"):
+        placeholder = st.empty()
+        
+        def render_modal(pct):
+            placeholder.markdown(f"""
+                <div class="fixed-overlay"></div>
+                <div class="fixed-modal">
+                    <div class="spinner-loader" style="margin-bottom:20px;"></div>
+                    <h3 style="margin:0 0 8px; font-weight:700;">Analyzing Contracts...</h3>
+                    <p style="margin:0; font-size:14px; opacity:0.8;">Extracting policy rules and prices. Please wait.</p>
+                    <div style="margin-top:24px; background:var(--secondary-background-color); border-radius:10px; height:6px; overflow:hidden;">
+                        <div style="background: linear-gradient(90deg, #3b82f6, #8b5cf6); width: {pct}%; height: 100%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div style="text-align:right; font-size:12px; margin-top:6px; font-weight:600; color:#3b82f6;">{pct}%</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        render_modal(10)
+        
+        if not up1 or not up2:
+            placeholder.empty()
+            st.error("Upload files not found. Please upload both contracts and try again.")
+            st.session_state.cc_started = False
+            st.stop()
+        
+        pdf1_bytes = up1.getvalue()
+        pdf2_bytes = up2.getvalue()
+        
+        chunks = []
+        char_count = 0
+        EXPECTED_CHARS = 6000 
+
+        cancel_compare_placeholder = st.empty()
+        cancel_compare_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
+        if cancel_compare_placeholder.button("CANCEL COMPARISON", key="cc_cancel_btn_trigger"):
+            st.session_state.cc_cancel_requested = True
+            st.rerun()
+
+        try:
+            for chunk in compare_utils.stream_contract_comparison(pdf1_bytes, pdf2_bytes, api_key):
+                if st.session_state.get("cc_cancel_requested"):
+                    break
+                    
+                cancel_compare_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
+                if cancel_compare_placeholder.button("CANCEL COMPARISON", key="cc_cancel_btn_trigger_" + str(char_count)):
+                    st.session_state.cc_cancel_requested = True
+                    st.rerun()
+
+                if chunk == "[RESET_STREAM]":
+                    chunks = []
+                    char_count = 0
+                    render_modal(10)
+                    continue
+                    
+                chunks.append(chunk)
+                char_count += len(chunk)
+                pct = min(15 + int(char_count / EXPECTED_CHARS * 80), 98)
+                render_modal(pct)
+
+            cancel_compare_placeholder.empty()
+            
+            if st.session_state.get("cc_cancel_requested"):
+                st.session_state.cc_started = False
+                st.session_state.cc_cancel_requested = False
+                placeholder.empty()
+                st.rerun()
+                
+            render_modal(100)
+            placeholder.empty()
+            
+            result_raw = "".join(chunks)
+            st.session_state.cc_started = False
+
+            if "429" in result_raw or "quota" in result_raw.lower() or "quota exceeded" in result_raw.lower():
+                st.error("**API Quota Exceeded (429)**")
+                st.warning(
+                    "Free-tier limit reached (20 req/day).\n\n"
+                    "**Fix:** Enable Billing at aistudio.google.com "
+                    "to increase quota."
+                )
+                st.stop()
+
+            cleaned = _clean_json(result_raw)
+            try:
+                data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                try:
+                    repaired = _repair_json(cleaned)
+                    data = json.loads(repaired)
+                except json.JSONDecodeError as ex:
+                    st.error(f"**JSON Parse Error:** {ex}")
+                    st.info("The AI response was slightly malformed.")
+                    st.stop()
+
+            if "error" in data:
+                err = data["error"]
+                st.error("Quota Exceeded" if ("429" in err or "quota" in err.lower()) else f"AI Error: {err}")
+                st.stop()
+                
+            st.session_state.cc_extracted_data = data
+            st.session_state.cc_started = False
+            st.session_state.cc_review_mode = True
+            st.rerun()
+        except Exception as e:
+            placeholder.empty()
+            cancel_compare_placeholder.empty()
+            st.error(f"Comparison failed: {str(e)}")
+            st.session_state.cc_started = False
+
+    # ─── Review & Edit Mode ───────────────────────────────────────────────────
+    if st.session_state.get("cc_review_mode"):
+        st.markdown("""
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom: 20px;">
+                <div style="background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:6px; padding:6px 12px; color:white; font-weight:700; font-size:12px; letter-spacing:1px; box-shadow:0 4px 6px -1px rgba(59, 130, 246, 0.3);">DATA VERIFICATION</div>
+                <div style="font-size:24px; font-weight:700; color:var(--text-color); letter-spacing:-0.03em;">Review & Edit Prices</div>
+            </div>
+            <div style="background:var(--secondary-background-color); border-left: 4px solid #3b82f6; border-radius:4px 8px 8px 4px; padding:16px 20px; margin-bottom: 32px;">
+                <p style="margin:0; font-size:14px; color:var(--text-color); opacity:0.9; line-height:1.6;">
+                    AI extraction is complete. Please verify the extracted prices below. You can <b>click any cell to edit</b> the value before finalizing the Excel report.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        edited_data = copy.deepcopy(st.session_state.cc_extracted_data)
+        
+        seasons_data = edited_data.get("seasons") or []
+        for i, season in enumerate(seasons_data):
+            s_name = season.get("season_name") or f"Season {i+1}"
+            p1 = season.get("period_1", "")
+            p2 = season.get("period_2", "")
+            
+            p1_display = p1 if p1 and p1.strip() and p1 != "N/A" else "Not Specified"
+            p2_display = p2 if p2 and p2.strip() and p2 != "N/A" else "Not Specified"
+            
+            st.markdown(f"""
+                <div style="margin-top:32px; margin-bottom:16px; display:flex; align-items:baseline; flex-wrap:wrap; gap:12px; border-bottom:2px solid var(--secondary-background-color); padding-bottom:8px;">
+                    <div style="font-size:17px; font-weight:700; color:var(--text-color);">{s_name}</div>
+                    <div style="font-size:13px; color:var(--text-color);">
+                        <span style="opacity:0.6;">Prev:</span> <span style="font-weight:600; opacity:0.9;">{p1_display}</span> 
+                        <span style="margin:0 8px;opacity:0.2;">|</span> 
+                        <span style="opacity:0.6;">New:</span> <span style="font-weight:600; color:#3b82f6;">{p2_display}</span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            rooms = season.get("rooms", [])
+            if rooms:
+                edited_rooms = st.data_editor(
+                    rooms,
+                    column_config={
+                        "room_name": st.column_config.TextColumn("Room Name", width="large"),
+                        "price_1": st.column_config.TextColumn("Contract 1 Price"),
+                        "price_2": st.column_config.TextColumn("Contract 2 Price"),
+                    },
+                    hide_index=True,
+                    key=f"cc_editor_season_{i}",
+                    use_container_width=True
+                )
+                edited_data["seasons"][i]["rooms"] = edited_rooms
+                
+        st.markdown("<br>", unsafe_allow_html=True)
+        _, btn1, btn2, _ = st.columns([1, 1.5, 1.5, 1])
+        with btn1:
+            if st.button("Cancel & Start Over", use_container_width=True, key="cancel_review_btn"):
+                st.session_state.cc_started = False
+                st.session_state.cc_review_mode = False
+                st.session_state.cc_extracted_data = None
+                st.rerun()
+        with btn2:
+            if st.button("Confirm & Generate Excel", type="primary", use_container_width=True, key="confirm_excel_btn"):
+                st.session_state.cc_final_data = edited_data
+                st.session_state.cc_review_mode = False
+                st.session_state.cc_report_ready = True
+                st.rerun()
+
+    # ─── Generate Excel & Downloader ──────────────────────────────────────────
+    if st.session_state.get("cc_report_ready"):
+        data = st.session_state.cc_final_data
+        
+        try:
+            excel_bytes = compare_excel.generate_comparison_excel(data)
+            
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            hotel_name_raw = data.get("hotel_name")
+            if not hotel_name_raw or not str(hotel_name_raw).strip():
+                hotel_name = "Unknown_Hotel"
+            else:
+                hotel_name = str(hotel_name_raw).strip()
+            
+            if hotel_name.upper() == "HOTEL NAME":
+                hotel_name = "Unknown_Hotel"
+            
+            hotel_name_safe = re.sub(r'[\\/*?:"<>|]', "", hotel_name)
+            history_file_name = f"{hotel_name_safe}_{timestamp}.xlsx"
+            
+            try:
+                os.makedirs("history", exist_ok=True)
+                with open(os.path.join("history", history_file_name), "wb") as f:
+                    f.write(excel_bytes)
+            except Exception as e:
+                pass
+                
+        except Exception as ex:
+            st.error(f"Excel generation failed: {ex}")
+            st.stop()
+
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1));
+                        border: 1px solid rgba(16,185,129,0.3); border-radius: 12px;
+                        padding: 16px 24px; margin: 24px 0; display:flex; align-items:center; gap:12px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-color);">Analysis complete — your comparison report is ready to download.</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        recommendation = str(data.get("recommendation") or "").strip()
+        if recommendation:
+            st.markdown(
+                f'<div style="background:var(--secondary-background-color);border-radius:10px;'
+                f'padding:14px 20px;margin:8px 0 16px;font-size:15px;font-weight:600;color:var(--text-color)">'
+                f'{recommendation}</div>',
+                unsafe_allow_html=True
+            )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                "Download Excel Report",
+                data=excel_bytes,
+                file_name="Contract_Comparison.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
+                use_container_width=True,
+                key="download_compare_report_btn"
+            )
+            st.caption("In Google Sheets → File → Import → Upload .xlsx")
+            
+        with col2:
+            if st.button("Compare Another", use_container_width=True, key="compare_another_btn"):
+                st.session_state.cc_started = False
+                st.session_state.cc_review_mode = False
+                st.session_state.cc_report_ready = False
+                st.session_state.cc_extracted_data = None
+                st.rerun()
+                
     st.stop()
 
 # ─── Upload Area ───────────────────────────────────────────────────────────────
@@ -893,7 +1636,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 # ─── Analysis Output ──────────────────────────────────────────────────────────
 if st.session_state.get("is_auditing"):
-    st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e8edf2">AUDIT REPORT</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:color-mix(in srgb, var(--text-color) 60%, transparent);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb, var(--text-color) 12%, transparent)">AUDIT REPORT</div>', unsafe_allow_html=True)
     
     report_placeholder = st.empty()
     modal_placeholder = st.empty()
@@ -982,7 +1725,7 @@ if st.session_state.get("is_auditing"):
 if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"):
     saved_result = st.session_state.get("_audit_result", "")
     if saved_result:
-        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #e8edf2">AUDIT REPORT</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:color-mix(in srgb, var(--text-color) 60%, transparent);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb, var(--text-color) 12%, transparent)">AUDIT REPORT</div>', unsafe_allow_html=True)
         # apply_badges is now a top-level function — accessible here directly
         
         def _show_saved_report(full_text):
@@ -1003,7 +1746,7 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
                 <div style="background: linear-gradient(135deg, {color}15, {color}08); border: 2px solid {color}40; border-radius: 16px; padding: 28px 32px; margin: 24px 0; text-align: center;">
                     <div style="font-size: 52px; font-weight: 900; color: {color}; line-height: 1;">{score:.0f}%</div>
                     <div style="font-size: 13px; font-weight: 700; color: {color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Accuracy Score</div>
-                    {"<div style='font-size:14px;color:#64748b;margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
+                    {"<div style='font-size:14px;color:color-mix(in srgb, var(--text-color) 65%, transparent);margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
                 </div>""", unsafe_allow_html=True)
             
             processed = apply_badges(full_text)
