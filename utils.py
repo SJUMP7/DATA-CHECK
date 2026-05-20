@@ -79,6 +79,9 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
 
     # Prefer stable, high-quota models for large JSON generation
     preferred_order = [
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-flash-latest",
         "gemini-1.5-flash",
         "gemini-1.5-flash-latest",
         "gemini-2.0-flash",
@@ -494,50 +497,53 @@ COLUMN RULES & FORMATTING:
 4. HTML FORMATTING REQUIRED (STRICT TEMPLATES):
 
 [cancellation_policy Template]
-<p><strong>CANCELLATION : [SEASON NAME OR PERIOD]</strong></p>
-<p>• Cancellation made [policy]</p>
-<p>• <span style="color: #ff0000;">NO-SHOW/Early Check Out</span> : [policy]</p>
-<p><span style="color: #ff0000;">*Remark : [details]</span></p>
+CANCELLATION : [LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD]<br>
+• Cancellation made [policy details]<br>
+• <span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : [policy details]<br>
+<span style="color: red; font-weight: bold;">*Remark</span> : [details if any]
 
 [child_policy Template]
-<p><span style="color: #008000;"><strong>Room rate includes ABF for [xx] persons</strong></span></p>
-<p><span style="color: #008000;"><strong>Maximum Occupancy : [XA / XA+XC]</strong></span></p>
-<p>[policy]</p>
-<p>in case have 2 Children;</p>
-<p>if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;</p>
-<p>1st child [policy]</p>
-<p>2nd child [policy]</p>
-<p>Adult [policy]</p>
-<p><span style="color: #ff0000;"><strong>*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</strong></span></p>
+<span style="color: green; font-weight: bold;">Room rate includes ABF for [xx] persons</span><br>
+<span style="color: green; font-weight: bold;">Maximum Occupancy : [XA / XA+XC]</span><br><br>
+[policy details]<br><br>
+in case have 2 Children;<br>
+if have <strong>2 children ([xx-xx.99] years old)</strong> stay in room, subject to charge as policy below;<br>
+1st child [policy]<br>
+2nd child [policy]<br><br>
+Adult [policy]<br>
+<span style="color: red; font-weight: bold;">*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</span>
 
 [meals_and_info Template]
-<p><strong>MAIN CONTRACT [Year] : [Period]</strong></p>
-<br/>
-<p><span style="color: #ffcc00;"><strong>[ (only for Peak)</strong></span></p>
-<p><strong>MIN. [XX] NIGHTS during [xx-xx]</strong></p>
-<p><strong>NOT ALLOWED CHECK OUT on [xx]</strong></p>
-<p><strong>※ Compulsory [Event Name] on [Date]</strong></p>
-<p>Adult = [xxx] THB / Child ([age]) = [xxx] THB</p>
-<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-<p><span style="color: #ffcc00;"><strong>]</strong></span></p>
-<br/>
-<p><strong>※ MEAL RATES</strong></p>
-<p>Half Board (Lunch OR Dinner)</p>
-<p>Full Board (Lunch AND Dinner)</p>
-<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-<br/>
-<p><strong>※ Early Bird</strong></p>
-<p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-<p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-<p>• E.B [xx] Days, get [xx]% discount.</p>
-<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-<br/>
-<p><strong>※ Long Stay Offer / Minimum Nights Stay Offer</strong></p>
-<p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-<p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-<p>• <span style="color: #008000;"><strong>#MIN. [X] NIGHTS</strong></span>, get [xx]% discount</p>
-<br/>
-<p><strong>※ Honeymooner / Anniversary</strong></p>
+<span style="color: red; font-weight: bold;">#MIN. [XX] NIGHTS - COMPULSORY CHRISTMAS/NEW YEAR'S GALA DINNER on [xx - xx]</span><br>
+<span style="color: red; font-weight: bold;">**NOT ALLOWED CHECK OUT on [xx]**</span> (only peak / period that have conditions)
+<hr>
+<strong>MAIN CONTRACT [Year] : [Period]</strong><br><br>
+<span style="color: orange; font-weight: bold;">[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(only for Peak)</span><br>
+<strong>MIN. [XX] NIGHTS during [xx-xx]</strong><br>
+<strong>NOT ALLOWED CHECK OUT on [xx]</strong><br><br>
+※ <strong>Compulsory</strong> New Year's Gala Dinner on 31 DEC [xx]<br>
+Adult = [xxx] THB / Child ([age]) = [xxx] THB<br>
+<span style="color: red; font-weight: bold;">*Remark : </span>[details]<br>
+<span style="color: orange; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</span><br><br>
+※ <strong>MEAL RATES</strong><br>
+<strong>Half Board</strong> (Lunch OR Dinner) = [xxx] THB<br>
+<strong>Full Board</strong> (Lunch AND Dinner) = [xxx] THB<br>
+<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
+※ <strong>Compulsory / Optional Meal Plan</strong><br>
+Adult = [xxx] THB / Child = [xxx] THB<br>
+<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
+※ <strong>Benefits</strong><br>[details]<br><br>
+※ <strong>Transfer</strong><br>[details]<br><br>
+※ <strong>Early Bird</strong><br>
+<span style="color: blue; font-weight: bold;">Validity : [Period]</span><br>
+<span style="color: red; font-weight: bold;">*Black Out : [Period]</span><br>
+• E.B [xx] Days, get [xx]% discount.<br>
+<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
+※ <strong>Long Stay Offer / Minimum Nights Stay Offer</strong><br>
+<span style="color: blue; font-weight: bold;">Validity : [Period]</span><br>
+<span style="color: red; font-weight: bold;">*Black Out : [Period]</span><br>
+• <span style="color: green; font-weight: bold;">#MIN. [X] NIGHTS</span>, get [xx]% discount<br><br>
+※ <strong>Honeymooner / Anniversary</strong><br>[details]
 
 5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0).
 6. PERIOD SPLITTING: Split into separate rows if conditions change within the season.
@@ -724,10 +730,17 @@ def create_upload_excel(data_list: list):
         elif re.search(r'\b(rb|breakfast|abf)\b', rname, re.IGNORECASE):
             abf_val = 'Included'
             
-        # Clean up the name (remove (RO), (RB), RO, RB, [RO], [RB] only if they are separate words or in brackets)
-        rname_clean = re.sub(r'[\(\[\{]?\b(ro|rb|room\s+only|breakfast|abf)\b[\)\]\}]?', '', rname, flags=re.IGNORECASE)
-        # Also clean up trailing/leading dashes or empty brackets
+        # 1. First remove bracketed terms like (RO), (RB), (Room Only), (ABF), etc.
+        rname_clean = re.sub(r'[\(\[\{]\s*(ro|rb|room\s+only|breakfast|abf)\s*[\)\]\}]', '', rname, flags=re.IGNORECASE)
+        # 2. Then remove standalone words ro, rb, abf, breakfast
+        rname_clean = re.sub(r'\b(ro|rb|abf|breakfast)\b', '', rname_clean, flags=re.IGNORECASE)
+        # 3. If there is a trailing 'only' (e.g. Deluxe Room Only), remove it
+        rname_clean = re.sub(r'\b(only)\b\s*$', '', rname_clean, flags=re.IGNORECASE)
+        
+        # Clean up trailing/leading dashes, spaces, or empty/unclosed brackets
         rname_clean = re.sub(r'\s*-\s*$', '', rname_clean)
+        rname_clean = re.sub(r'\s*[\(\[\{]\s*[\)\]\}]\s*$', '', rname_clean) # remove empty trailing brackets like ()
+        rname_clean = re.sub(r'\s*[\(\[\{]\s*$', '', rname_clean) # remove trailing unclosed brackets like (
         rname_clean = re.sub(r'\s+', ' ', rname_clean).strip()
         
         return pd.Series([rname_clean, abf_val])
