@@ -883,11 +883,7 @@ with st.expander("UPLOAD & SCOPE SETTINGS", expanded=not _audit_done):
         hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in sidebar"
         st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
 
-else:
-    # Audit done — files no longer accessible; use session state refs
-    pdf_file = None
-    excel_file = None
-    selected_focus = st.session_state.get("focus_list", ["All-in-One Full Scan"])
+
 
 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
