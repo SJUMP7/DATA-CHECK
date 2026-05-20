@@ -103,9 +103,9 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
 def validate_api_key(api_key: str) -> tuple[bool, str]:
     if not api_key: return False, "No API key provided."
     model, available = detect_available_model(api_key)
-    if model: return True, f"Connected ✓ Model: {model}"
-    if available: return True, f"Connected (models found: {len(available)})"
-    return False, "API key invalid or Gemini API not enabled."
+    if model: return True, f"CONNECTED - MODEL: {model.upper()}"
+    if available: return True, f"CONNECTED (MODELS FOUND: {len(available)})"
+    return False, "API KEY INVALID OR GEMINI API NOT ENABLED."
 
 def _excel_col_name(n):
     """Convert 0-indexed column number to Excel letter (0 -> A, 1 -> B, 26 -> AA)."""
@@ -545,18 +545,28 @@ COLUMN RULES & FORMATTING:
 <p>• [Honeymoon details]</p>
 
 [meals_and_info Template for Promotion (STRICT PATTERN)]
-<p><strong>PROMOTION : [Promotion Name]</strong></p>
-<p><span style="color: #0000ff;"><strong>Promo code : [Promotion Code - MUST MATCH promo_code column]</strong></span></p>
-<p><strong>Stay : [Validity Period, e.g. 1 Nov 26 - 31 Oct 27]</strong></p>
-<p><strong>Book by : [Book by date, or if not specified in the contract, MUST use the end date of the validity period]</strong></p>
-<p><span style="color: #ff0000;"><strong>*Black Out : [Black out dates if any, else omit this line]</strong></span></p>
+<p><strong>PROMOTION: [Promotion Name]</strong></p>
+<p><strong>PROMO CODE: <span style="color: #0000ff;">[Promotion Code - MUST MATCH promo_code column]</span></strong></p>
+<p><strong>STAY: [Stay Period, e.g. NOW - 31 OCT 26]</strong></p>
+<p><strong>BOOK BY:<span style="color: #ff0000;"> [Book by date, or if not specified in the contract, MUST use the end date of the validity period]</span></strong></p>
 <p>&nbsp;</p>
-<p><span style="color: #008000;"><strong>※ [Offer / Benefits / Minimum nights required, e.g. Offer / Minimum 3 nights stay]</strong></span></p>
-<p>• [Details of the promotion offer, e.g., get 15% discount on contract rate]</p>
+<p><strong>TERM AND CONDITION:</strong></p>
+<p>• [Condition 1, e.g. Applicable for FIT bookings only — cannot be combined with other promotions]</p>
+<p>• [Condition 2, e.g. All other terms & conditions remain unchanged]</p>
+<hr />
+<p><strong>MAIN CONTRACT [Year]</strong>: [Stay Period]</p>
 <p>&nbsp;</p>
-<p><strong>Terms and Conditions :</strong></p>
-<p>• [Condition 1, e.g. Promotion rates are non-refundable]</p>
-<p>• [Condition 2, e.g. Cannot be combined with other offers]</p>
+<p><strong>※ MEAL RATES</strong></p>
+<p><strong>• Lunch</strong></p>
+<p>Adult = [Price] THB / Child [Age] = [Price] THB</p>
+<p><strong>• Dinner</strong></p>
+<p>Adult = [Price] THB / Child [Age] = [Price] THB</p>
+<p><span style="color: #ff0000;">*Remark:</span></p>
+<p>• [Meal details]</p>
+<p>&nbsp;</p>
+<p><strong>※ HONEYMOON OFFER</strong></p>
+<p><span style="color: #ff0000;">*Request for the marriage certificate upon the arrival.</span></p>
+<p>• [Honeymoon details]</p>
 
 5. promo_book_till & Book by Rule:
    - For contract_type = "Promotion" or "Early Bird", check the contract for the "Book by" or "Booking period" end date.
@@ -691,7 +701,7 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes
                 threshold = max(1, int(expected_rows * 0.5))
                 if len(data) < threshold:
                     escalation = (
-                        f"⚠️ PREVIOUS ATTEMPT WARNING: You only generated {len(data)} rows, "
+                        f"[WARNING] PREVIOUS ATTEMPT: You only generated {len(data)} rows, "
                         f"but the existing Excel for this hotel has {expected_rows} rows. "
                         f"Go through the PDF again and extract EVERY room type × season × rate type combination. "
                         f"Match the scale of the reference data shown above."

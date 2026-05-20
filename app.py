@@ -4,6 +4,62 @@ from datetime import datetime
 import streamlit as st
 from utils import stream_recheck_analysis, validate_api_key
 
+# ─── Dynamic Honest Milestone Parser ─────────────────────────────────────────
+def get_honest_milestone(full_text, chunk_count):
+    if not full_text:
+        return 5, "Initializing AI Engine..."
+    if "[SECTION_FAIL]" not in full_text:
+        # Phase 1: Analyzing PDF structure
+        perc = min(10 + (chunk_count * 1.5), 30)
+        return perc, "Reading Contract PDF..."
+    if "[SECTION_REVIEW]" not in full_text:
+        # Phase 2: Cross-referencing pricing rows
+        perc = min(30 + (chunk_count * 0.8), 65)
+        return perc, "Cross-Referencing Excel Rates..."
+    if "คะแนนความถูกต้อง" not in full_text:
+        # Phase 3: Validating cancellation and child policies
+        perc = min(65 + (chunk_count * 0.5), 90)
+        return perc, "Validating Booking Policies..."
+    # Phase 4: Finalizing report assembly
+    perc = min(90 + (chunk_count * 0.3), 98)
+    return perc, "Assembling Final Audit Score..."
+
+# ─── Interactive Cancellation Interrupt (C2 & H2) ───────────────────────────
+if "cancel_requested" not in st.session_state:
+    st.session_state.cancel_requested = False
+
+if st.session_state.get("cancel_btn_trigger") or st.session_state.get("cancel_requested"):
+    st.session_state.is_auditing = False
+    st.session_state.cancel_requested = False
+    st.session_state.pop("audit_done", None)
+    st.session_state.pop("cancel_btn_trigger", None)
+    st.rerun()
+
+# ─── Destructive Start Fresh Confirmation Modal (C1) ─────────────────────────
+if st.session_state.get("confirm_reset", False):
+    st.markdown("""
+        <div class="fixed-overlay"></div>
+        <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: rgba(11, 15, 25, 0.95) !important;">
+            <h3 style="color: #ef4444 !important;">ยืนยันการล้างข้อมูล</h3>
+            <p style="margin-bottom: 24px; color: #94a3b8 !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Render two action buttons inline
+    _, btn1, btn2, _ = st.columns([1, 2, 2, 1])
+    with btn1:
+        if st.button("ยืนยันการล้างข้อมูล", type="primary", use_container_width=True, key="confirm_reset_yes"):
+            # Clear all states
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", 
+                        "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name", "confirm_reset"]:
+                st.session_state.pop(key, None)
+            st.rerun()
+    with btn2:
+        if st.button("ยกเลิก", use_container_width=True, key="confirm_reset_no"):
+            st.session_state.confirm_reset = False
+            st.rerun()
+    st.stop()
+
 # ─── Session State Key Constants (prevents silent typo bugs) ─────────────────
 _KEY_AUDIT_DONE   = "audit_done"
 _KEY_IS_AUDITING  = "is_auditing"
@@ -612,27 +668,28 @@ with st.sidebar:
     st.markdown("<div style='font-size: 12px; font-weight: 500; opacity: 0.5; margin-bottom: 24px;'>Data Recheck Tool</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>NAVIGATION</div>", unsafe_allow_html=True)
-    page_options = ["🔍 Contract Auditor", "✨ AI Excel Generator"]
+    page_options = ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]
     selected_page = st.radio("Navigation", page_options, label_visibility="collapsed")
     
-    st.markdown("<br><div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>AI Engine</div>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     saved_key = load_key()
 
-    if is_cloud_key():
-        api_key = saved_key
-        st.caption("API Key: configured via Secrets")
-    else:
-        api_key = st.text_input("GEMINI API KEY", type="password", value=saved_key, placeholder="Enter API Key...", label_visibility="collapsed")
-        if api_key:
-            if api_key != saved_key:
-                save_key(api_key)
-            ok, msg = validate_api_key(api_key)
-            if ok:
-                st.caption(f"STATUS: {msg}")
-            else:
-                st.error("Invalid API Key")
+    with st.expander("CONNECTION SETTINGS", expanded=not saved_key):
+        if is_cloud_key():
+            api_key = saved_key
+            st.caption("API KEY: CONFIGURED VIA SECRETS")
         else:
-            st.caption("API Key required to run analysis.")
+            api_key = st.text_input("GEMINI API KEY", type="password", value=saved_key, placeholder="Enter API Key...", label_visibility="collapsed")
+            if api_key:
+                if api_key != saved_key:
+                    save_key(api_key)
+                ok, msg = validate_api_key(api_key)
+                if ok:
+                    st.caption(f"STATUS: {msg}")
+                else:
+                    st.error("INVALID API KEY")
+            else:
+                st.caption("API KEY REQUIRED FOR ANALYSIS")
 
 
 
@@ -644,7 +701,7 @@ else:
     anim_class = ""
 
 # ─── Hero ─────────────────────────────────────────────────────────────────────
-if selected_page == "🔍 Contract Auditor":
+if selected_page == "CONTRACT AUDITOR":
     st.markdown(f"""
     <div class="hero {anim_class}">
       <div class="h1">DATA AUDITOR</div>
@@ -662,7 +719,7 @@ else:
     """, unsafe_allow_html=True)
 
 # ─── PAGE ROUTING ──────────────────────────────────────────────────────────────
-if selected_page == "✨ AI Excel Generator":
+if selected_page == "AI EXCEL GENERATOR":
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
@@ -673,7 +730,7 @@ if selected_page == "✨ AI Excel Generator":
             st.session_state.cached_pdf_name = pdf_file_gen.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{pdf_file_gen.name}</div>', unsafe_allow_html=True)
         elif st.session_state.get("cached_pdf_name"):
-            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">CACHED: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -684,7 +741,7 @@ if selected_page == "✨ AI Excel Generator":
             st.session_state.cached_excel_name = excel_ref_file.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{excel_ref_file.name}</div>', unsafe_allow_html=True)
         elif st.session_state.get("cached_excel_name"):
-            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">CACHED: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -695,7 +752,7 @@ if selected_page == "✨ AI Excel Generator":
     
     _, btn_col, _ = st.columns([1.5, 3, 1.5])
     with btn_col:
-        if st.button("Generate Upload Excel from PDF →", type="primary", use_container_width=True, disabled=not gen_ready):
+        if st.button("Generate Upload Excel from PDF", type="primary", use_container_width=True, disabled=not gen_ready):
             with st.spinner("AI is analyzing and generating Excel..."):
                 try:
                     from utils import extract_pdf_to_excel_json, create_upload_excel
@@ -711,7 +768,7 @@ if selected_page == "✨ AI Excel Generator":
                         excel_data = create_upload_excel(extracted_data)
                         st.success("Excel generated successfully!")
                         st.download_button(
-                            label="📥 Download Generated Upload File",
+                            label="DOWNLOAD GENERATED UPLOAD FILE",
                             data=excel_data,
                             file_name=f"Generated_Upload_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -720,7 +777,7 @@ if selected_page == "✨ AI Excel Generator":
                     else:
                         st.error("AI could not extract data. Please try again.")
                         if error_detail:
-                            st.caption("🛠️ Technical Details (Debug):")
+                            st.caption("TECHNICAL DETAILS (DEBUG):")
                             st.code(error_detail, language="bash")
                 except Exception as e:
                     st.error(f"Generation failed: {str(e)}")
@@ -735,29 +792,21 @@ if selected_page == "✨ AI Excel Generator":
 _audit_done = st.session_state.get("audit_done", False)
 _is_auditing = st.session_state.get("is_auditing", False)
 
-# Toggle logic: show_upload defaults True if not audited yet
-if "show_upload" not in st.session_state:
-    st.session_state.show_upload = True
-if _audit_done:
-    st.session_state.show_upload = False
-
-_show = st.session_state.show_upload
-
-# Render a clean minimal header row
+# Render clean action buttons in top-right when audit is done
 if _audit_done:
     _left, _right1, _right2 = st.columns([4, 1.5, 1.5])
     with _right1:
-        if st.button("Edit Scope / Re-Audit", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "show_upload"]:
+        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result"]:
                 st.session_state.pop(key, None)
             st.rerun()
     with _right2:
-        if st.button("Start Fresh", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name"]:
-                st.session_state.pop(key, None)
+        if st.button("START FRESH", use_container_width=True):
+            st.session_state.confirm_reset = True
             st.rerun()
 
-if _show:
+# ─── Decoupled Upload Panel & Scope Selector (H5) ───────────────────────────
+with st.expander("UPLOAD & SCOPE SETTINGS", expanded=not _audit_done):
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
@@ -768,7 +817,7 @@ if _show:
             st.session_state.cached_pdf_name = pdf_file.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{pdf_file.name}</div>', unsafe_allow_html=True)
         elif st.session_state.get("cached_pdf_name"):
-            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">CACHED: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -779,7 +828,7 @@ if _show:
             st.session_state.cached_excel_name = excel_file.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{excel_file.name}</div>', unsafe_allow_html=True)
         elif st.session_state.get("cached_excel_name"):
-            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">CACHED: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ─── Audit Focus ──────────────────────────────────────────────────────────
@@ -828,6 +877,7 @@ if _show:
             st.session_state.is_auditing = True
             st.session_state.audit_done = False
             st.session_state.focus_list = selected_focus
+            st.rerun()
 
     if not ready and not st.session_state.get("is_auditing"):
         hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in sidebar"
@@ -851,17 +901,10 @@ if st.session_state.get("is_auditing"):
     
     report_placeholder = st.empty()
     modal_placeholder = st.empty()
+    cancel_placeholder = st.empty()
     
     # Initial Loading State
     focus_text = ", ".join(st.session_state.get("focus_list", [])) or "Full Scan"
-    # Phases for progress display
-    phases = [
-        "Analyzing PDF Structure...",
-        "Mapping Excel Columns...",
-        "Cross-referencing Data Rows...",
-        "Validating Business Logic...",
-        "Finalizing Report..."
-    ]
 
     def render_modal(perc, phase):
         modal_placeholder.markdown(f"""
@@ -877,21 +920,32 @@ if st.session_state.get("is_auditing"):
 
     render_modal(5, "Initializing AI Engine...")
     
+    # Centered floating cancel button above overlay
+    cancel_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
+    if cancel_placeholder.button("CANCEL AUDIT", key="cancel_btn_trigger"):
+        st.session_state.cancel_requested = True
+        st.rerun()
 
     full_response = ""
     chunk_count = 0
     try:
-        pdf_bytes_to_use = pdf_file.getvalue() if pdf_file else st.session_state.get("cached_pdf_bytes")
-        excel_bytes_to_use = excel_file.getvalue() if excel_file else st.session_state.get("cached_excel_bytes")
+        # Resolve files dynamically
+        pdf_bytes_to_use = st.session_state.get("cached_pdf_bytes")
+        excel_bytes_to_use = st.session_state.get("cached_excel_bytes")
         
         for chunk in stream_recheck_analysis(pdf_bytes_to_use, excel_bytes_to_use, api_key, st.session_state.focus_list):
             chunk_count += 1
             
-            # Smart Progress Logic
-            phase_idx = min(chunk_count // 12, len(phases) - 1)
-            current_perc = min(10 + (chunk_count * 1.5), 98)
-            render_modal(current_perc, phases[phase_idx])
+            # Dynamic honest milestone parsing
+            current_perc, current_phase = get_honest_milestone(full_response, chunk_count)
+            render_modal(current_perc, current_phase)
             
+            # Re-draw the cancel button to keep it clickable in the event-loop
+            cancel_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
+            if cancel_placeholder.button("CANCEL AUDIT", key="cancel_btn_trigger_" + str(chunk_count)):
+                st.session_state.cancel_requested = True
+                st.rerun()
+
             if chunk == "[RESET_STREAM]":
                 full_response = ""
                 continue
@@ -903,6 +957,7 @@ if st.session_state.get("is_auditing"):
         
         render_modal(100, "Audit Complete")
         modal_placeholder.empty()
+        cancel_placeholder.empty()
         
         # Detect if the response is an error (quota exceeded, invalid key, etc.)
         _is_error = any(kw in full_response for kw in [
@@ -984,11 +1039,10 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
     _, reaudit_btn, reset_btn, _ = st.columns([1, 2, 2, 1])
     with reaudit_btn:
         if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "show_upload"]:
+            for key in ["audit_done", "is_auditing", "_audit_result"]:
                 st.session_state.pop(key, None)
             st.rerun()
     with reset_btn:
         if st.button("RESET / NEW UPLOAD", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name"]:
-                st.session_state.pop(key, None)
+            st.session_state.confirm_reset = True
             st.rerun()
