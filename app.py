@@ -139,9 +139,12 @@ def load_css():
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
     
     html { scroll-behavior: smooth !important; }
-    html, body, p, span, label, li, th, td, div[data-testid="stMarkdownContainer"] p {
-        font-family: 'Inter', sans-serif !important;
-        color: var(--text-color) !important;
+    html, body, p, li, th, td, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"] p {
+        font-family: 'Inter', sans-serif;
+        color: var(--text-color);
+    }
+    .material-symbols-rounded, .material-icons, [data-testid="stIconMaterial"], [class*="icon"] {
+        font-family: "Material Symbols Rounded", "Material Icons" !important;
     }
     /* Explicitly ensure st.spinner label is readable in dark/light mode */
     div[data-testid="stSpinner"], div[class*="stSpinner"] p, .stSpinner, div[data-testid="stSpinner"] > div > div {
@@ -203,7 +206,7 @@ def load_css():
         color: #3b82f6 !important;
         box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 12%, transparent) !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"] {
+    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
     div[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
@@ -300,10 +303,9 @@ def load_css():
 
     div[data-testid="stFileUploader"] { width: 100% !important; }
     div[data-testid="stFileUploader"] > section {
-        background: color-mix(in srgb, var(--text-color) 1%, transparent) !important;
-        border: 1px dashed color-mix(in srgb, var(--text-color) 10%, transparent) !important;
+        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        border: 1px dashed color-mix(in srgb, var(--text-color) 15%, transparent) !important;
         border-radius: 8px !important;
-        padding: 16px !important;
         transition: all 0.25s ease !important;
     }
     div[data-testid="stFileUploader"] > section:hover {
@@ -319,16 +321,16 @@ def load_css():
     }
 
     /* Primary Actions */
-    button[data-testid="baseButton-primary"] {
+    button[kind="primary"] {
         background: linear-gradient(135deg, #10b981, #3b82f6) !important; color: #fff !important; border: none !important;
         border-radius: 8px !important; font-size: 13px !important; font-weight: 700 !important; padding: 12px 28px !important;
         box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 20%, transparent) !important; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         letter-spacing: 0.08em !important; text-transform: uppercase !important;
     }
-    button[data-testid="baseButton-primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px color-mix(in srgb, #3b82f6 30%, transparent) !important; filter: brightness(1.1) !important; }
-    button[data-testid="baseButton-primary"]:disabled { background: color-mix(in srgb, var(--text-color) 4%, transparent) !important; color: color-mix(in srgb, var(--text-color) 30%, transparent) !important; box-shadow: none !important; transform: none !important; border: 1px solid color-mix(in srgb, var(--text-color) 5%, transparent) !important; }
+    button[kind="primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px color-mix(in srgb, #3b82f6 30%, transparent) !important; filter: brightness(1.1) !important; }
+    button[kind="primary"]:disabled { background: color-mix(in srgb, var(--text-color) 4%, transparent) !important; color: color-mix(in srgb, var(--text-color) 30%, transparent) !important; box-shadow: none !important; transform: none !important; border: 1px solid color-mix(in srgb, var(--text-color) 5%, transparent) !important; }
 
-    button[data-testid="baseButton-secondary"] {
+    button[kind="secondary"] {
         background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
         color: var(--text-color) !important;
         border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
@@ -854,6 +856,65 @@ def load_css():
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    import streamlit.components.v1 as components
+    components.html("""
+    <script>
+    const observer = new MutationObserver(() => {
+        const buttons = window.parent.document.querySelectorAll('.stButton button');
+        buttons.forEach(b => {
+            if(b.innerText.includes('Toggle Selector Menu')) {
+                const container = b.closest('.element-container');
+                if(container) {
+                    container.style.position = 'absolute';
+                    container.style.marginTop = '-84px';
+                    container.style.height = '60px';
+                    container.style.width = '100%';
+                    container.style.zIndex = '10';
+                    container.style.opacity = '0';
+                }
+            }
+            if(b.innerText.includes('Close Selector')) {
+                const container = b.closest('.element-container');
+                if(container) {
+                    container.style.position = 'fixed';
+                    container.style.top = '0';
+                    container.style.left = '0';
+                    container.style.width = '100vw';
+                    container.style.height = '100vh';
+                    container.style.zIndex = '999990';
+                    container.style.opacity = '0';
+                }
+            }
+            if(b.innerText.includes('Select Data Auditor App')) {
+                const container = b.closest('.element-container');
+                if(container) {
+                    container.style.position = 'absolute';
+                    container.style.top = '156px';
+                    container.style.left = '36px';
+                    container.style.width = '276px';
+                    container.style.height = '60px';
+                    container.style.zIndex = '999997';
+                    container.style.opacity = '0';
+                }
+            }
+            if(b.innerText.includes('Select Contract Compare App')) {
+                const container = b.closest('.element-container');
+                if(container) {
+                    container.style.position = 'absolute';
+                    container.style.top = '224px';
+                    container.style.left = '36px';
+                    container.style.width = '276px';
+                    container.style.height = '60px';
+                    container.style.zIndex = '999997';
+                    container.style.opacity = '0';
+                }
+            }
+        });
+    });
+    observer.observe(window.parent.document.body, {childList: true, subtree: true});
+    </script>
+    """, height=0)
 
 # Call CSS setup
 load_css()
