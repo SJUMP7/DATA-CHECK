@@ -85,23 +85,23 @@ def load_css():
     html { scroll-behavior: smooth !important; }
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif !important;
-        color: #e2e8f0 !important;
+        color: var(--text-color) !important;
     }
 
     /* Base App Background & Glow Effect */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #0b0f19 !important;
+        background-color: var(--background-color) !important;
         background-image: 
-            radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.04) 0px, transparent 50%) !important;
-        color: #e2e8f0 !important;
+            radial-gradient(at 0% 0%, color-mix(in srgb, #10b981 4%, transparent) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, color-mix(in srgb, #3b82f6 4%, transparent) 0px, transparent 50%) !important;
+        color: var(--text-color) !important;
     }
     .block-container { padding: 2.5rem 3rem 4rem !important; max-width: 1400px !important; }
 
     /* Sidebar Custom Styling */
     section[data-testid="stSidebar"] {
-        background-color: #070a13 !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background-color: var(--secondary-background-color) !important;
+        border-right: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
     }
     section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
         padding: 2.5rem 1.5rem !important;
@@ -118,11 +118,11 @@ def load_css():
     div[data-testid="stSidebar"] div[role="radiogroup"] label {
         display: flex !important;
         align-items: center !important;
-        background-color: rgba(255, 255, 255, 0.02) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background-color: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
         border-radius: 8px !important;
         padding: 14px 18px !important;
-        color: #94a3b8 !important;
+        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
         font-size: 11px !important;
         font-weight: 700 !important;
         letter-spacing: 0.08em !important;
@@ -132,16 +132,16 @@ def load_css():
         margin: 0 0 4px 0 !important;
     }
     div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: rgba(255, 255, 255, 0.04) !important;
-        border-color: rgba(255, 255, 255, 0.12) !important;
-        color: #f1f5f9 !important;
+        background-color: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
+        border-color: color-mix(in srgb, var(--text-color) 12%, transparent) !important;
+        color: var(--text-color) !important;
         transform: translateY(-1px) !important;
     }
     div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08)) !important;
-        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+        background: linear-gradient(135deg, color-mix(in srgb, #10b981 8%, transparent), color-mix(in srgb, #3b82f6 8%, transparent)) !important;
+        border: 1px solid color-mix(in srgb, #3b82f6 40%, transparent) !important;
         color: #3b82f6 !important;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.12) !important;
+        box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 12%, transparent) !important;
     }
     div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"] {
         display: none !important;
@@ -153,9 +153,9 @@ def load_css():
 
     /* Sidebar clean buttons */
     section[data-testid="stSidebar"] .stDownloadButton button {
-        background-color: rgba(255, 255, 255, 0.02) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
-        color: #e2e8f0 !important;
+        background-color: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        color: var(--text-color) !important;
         border-radius: 8px !important;
         font-size: 11px !important;
         font-weight: 700 !important;
@@ -167,23 +167,23 @@ def load_css():
         transition: all 0.2s ease !important;
     }
     section[data-testid="stSidebar"] .stDownloadButton button:hover {
-        background-color: rgba(255, 255, 255, 0.06) !important;
-        border-color: rgba(255, 255, 255, 0.15) !important;
-        color: #ffffff !important;
+        background-color: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        color: var(--text-color) !important;
     }
 
     /* Connection Settings Collapsible Expander in Sidebar */
     .stExpander {
-        background-color: rgba(255, 255, 255, 0.01) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background-color: color-mix(in srgb, var(--text-color) 1%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
         border-radius: 8px !important;
         margin: 12px 0 !important;
         overflow: hidden !important;
         box-shadow: none !important;
     }
     .stExpander > details > summary {
-        background: rgba(255, 255, 255, 0.02) !important;
-        color: #94a3b8 !important;
+        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
         font-weight: 700 !important;
         font-size: 10px !important;
         letter-spacing: 0.08em !important;
@@ -192,8 +192,8 @@ def load_css():
         cursor: pointer !important;
     }
     .stExpander > details > summary:hover {
-        color: #f1f5f9 !important;
-        background: rgba(255, 255, 255, 0.04) !important;
+        color: var(--text-color) !important;
+        background: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
     }
 
     /* Hero Typography */
@@ -207,23 +207,23 @@ def load_css():
         -webkit-text-fill-color: transparent;
         display: inline-block;
     }
-    .sub { font-size: 16px; color: #94a3b8; max-width: 600px; margin: 0 auto; line-height: 1.65; font-weight: 400; letter-spacing: 0.01em; }
+    .sub { font-size: 16px; color: color-mix(in srgb, var(--text-color) 60%, transparent); max-width: 600px; margin: 0 auto; line-height: 1.65; font-weight: 400; letter-spacing: 0.01em; }
 
     /* Upload Area & Cards */
     .unified-card {
-        background: rgba(15, 23, 42, 0.45) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         border-radius: 12px !important;
         padding: 24px 28px !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05) !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         margin-bottom: 16px;
     }
     .unified-card:hover { 
-        border-color: rgba(59, 130, 246, 0.25) !important;
-        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.08) !important;
+        border-color: color-mix(in srgb, #3b82f6 25%, transparent) !important;
+        box-shadow: 0 12px 40px color-mix(in srgb, #3b82f6 8%, transparent) !important;
         transform: translateY(-2px) !important;
     }
     .c-eye {
@@ -233,45 +233,45 @@ def load_css():
     }
     .c-ttl {
         font-family: 'Outfit', sans-serif !important;
-        font-size: 16px; font-weight: 700; color: #f1f5f9; margin-bottom: 20px;
+        font-size: 16px; font-weight: 700; color: var(--text-color); margin-bottom: 20px;
         letter-spacing: 0.02em;
         border-left: 2px solid #3b82f6; padding-left: 12px; line-height: 1.3;
     }
 
     div[data-testid="stFileUploader"] { width: 100% !important; }
     div[data-testid="stFileUploader"] > section {
-        background: rgba(255, 255, 255, 0.01) !important;
-        border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+        background: color-mix(in srgb, var(--text-color) 1%, transparent) !important;
+        border: 1px dashed color-mix(in srgb, var(--text-color) 10%, transparent) !important;
         border-radius: 8px !important;
         padding: 16px !important;
         transition: all 0.25s ease !important;
     }
     div[data-testid="stFileUploader"] > section:hover {
         border-color: #3b82f6 !important;
-        background: rgba(59, 130, 246, 0.02) !important;
+        background: color-mix(in srgb, #3b82f6 2%, transparent) !important;
     }
     div[data-testid="stFileUploader"] small { display: none !important; }
 
     /* Gradient Divider */
     .divider {
         height: 1px; margin: 20px 0 40px;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+        background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-color) 6%, transparent), transparent);
     }
 
     /* Primary Actions */
     button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #10b981, #3b82f6) !important; color: #fff !important; border: none !important;
         border-radius: 8px !important; font-size: 13px !important; font-weight: 700 !important; padding: 12px 28px !important;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15) !important; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 20%, transparent) !important; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         letter-spacing: 0.08em !important; text-transform: uppercase !important;
     }
-    button[data-testid="baseButton-primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25) !important; filter: brightness(1.1) !important; }
-    button[data-testid="baseButton-primary"]:disabled { background: rgba(255, 255, 255, 0.04) !important; color: #4b5563 !important; box-shadow: none !important; transform: none !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; }
+    button[data-testid="baseButton-primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px color-mix(in srgb, #3b82f6 30%, transparent) !important; filter: brightness(1.1) !important; }
+    button[data-testid="baseButton-primary"]:disabled { background: color-mix(in srgb, var(--text-color) 4%, transparent) !important; color: color-mix(in srgb, var(--text-color) 30%, transparent) !important; box-shadow: none !important; transform: none !important; border: 1px solid color-mix(in srgb, var(--text-color) 5%, transparent) !important; }
 
     button[data-testid="baseButton-secondary"] {
-        background: rgba(255, 255, 255, 0.02) !important;
-        color: #e2e8f0 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        color: var(--text-color) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         border-radius: 8px !important;
         font-size: 11px !important;
         font-weight: 700 !important;
@@ -280,76 +280,76 @@ def load_css():
         transition: all 0.25s ease !important;
     }
     button[data-testid="baseButton-secondary"]:hover {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border-color: rgba(255, 255, 255, 0.15) !important;
-        color: #ffffff !important;
+        background: color-mix(in srgb, var(--text-color) 5%, transparent) !important;
+        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        color: var(--text-color) !important;
     }
 
     /* Multiselect / Dropdown Overrides */
     span[data-baseweb="tag"] {
-        background-color: rgba(59, 130, 246, 0.1) !important;
+        background-color: color-mix(in srgb, #3b82f6 10%, transparent) !important;
         color: #3b82f6 !important;
-        border: 1px solid rgba(59, 130, 246, 0.25) !important;
+        border: 1px solid color-mix(in srgb, #3b82f6 25%, transparent) !important;
         border-radius: 4px !important;
         font-weight: 600 !important;
         letter-spacing: 0.02em;
     }
     span[data-baseweb="tag"] span { color: #3b82f6 !important; }
     li[role="option"] {
-        color: #e2e8f0 !important;
-        background-color: #0f172a !important;
+        color: var(--text-color) !important;
+        background-color: var(--background-color) !important;
     }
     li[role="option"]:hover, li[role="option"][aria-selected="false"]:hover {
-        background-color: rgba(255, 255, 255, 0.04) !important;
-        color: #ffffff !important;
+        background-color: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
+        color: var(--text-color) !important;
     }
     li[role="option"][aria-selected="true"] {
-        background-color: rgba(59, 130, 246, 0.12) !important;
+        background-color: color-mix(in srgb, #3b82f6 12%, transparent) !important;
         color: #3b82f6 !important;
         font-weight: 700 !important;
     }
     ul[data-testid="stMultiSelectDropdown"] {
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         border-radius: 8px !important;
-        background-color: #0f172a !important;
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4) !important;
+        background-color: var(--background-color) !important;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
         overflow: hidden;
     }
 
     /* Output Card & Tables */
     .output-card {
-        background: rgba(15, 23, 42, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important; 
+        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important; 
         border-radius: 16px; padding: 40px 36px; margin-top: 24px;
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25) !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08) !important;
         line-height: 1.8;
     }
     .output-card h3 {
         font-family: 'Outfit', sans-serif !important;
         font-size: 16px; font-weight: 700; margin: 32px 0 16px;
-        color: #ffffff;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px;
+        color: var(--text-color);
+        border-bottom: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent); padding-bottom: 10px;
         letter-spacing: 0.03em;
         text-transform: uppercase;
     }
     .output-card p, .output-card li {
-        font-size: 14px; color: #cbd5e1; margin-bottom: 8px;
+        font-size: 14px; color: color-mix(in srgb, var(--text-color) 85%, transparent); margin-bottom: 8px;
     }
     
     /* Policy Details Dropdown */
     details {
-        background: rgba(15, 23, 42, 0.4) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        background: color-mix(in srgb, var(--secondary-background-color) 40%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         border-radius: 8px !important;
         margin-top: 14px !important;
         overflow: hidden !important;
         transition: all 0.3s ease !important;
     }
     details[open] {
-        border-color: rgba(59, 130, 246, 0.3) !important;
-        box-shadow: 0 4px 24px rgba(59, 130, 246, 0.08) !important;
+        border-color: color-mix(in srgb, #3b82f6 30%, transparent) !important;
+        box-shadow: 0 4px 24px color-mix(in srgb, #3b82f6 8%, transparent) !important;
     }
     summary {
         padding: 14px 20px !important;
@@ -357,7 +357,7 @@ def load_css():
         font-weight: 700 !important;
         font-size: 12px !important;
         color: #3b82f6 !important;
-        background: rgba(59, 130, 246, 0.04) !important;
+        background: color-mix(in srgb, #3b82f6 4%, transparent) !important;
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
@@ -368,7 +368,7 @@ def load_css():
         letter-spacing: 0.05em !important;
         text-transform: uppercase !important;
     }
-    summary:hover { background: rgba(59, 130, 246, 0.08) !important; }
+    summary:hover { background: color-mix(in srgb, #3b82f6 8%, transparent) !important; }
     summary::-webkit-details-marker { display: none; }
     details > *:not(summary) {
         padding: 16px 20px 20px !important;
@@ -385,9 +385,9 @@ def load_css():
         font-size: 10px; font-weight: 700; text-transform: uppercase;
         letter-spacing: 0.06em;
     }
-    .badge-fail     { background: rgba(239, 68, 68, 0.1) !important; color: #f87171 !important; border: 1px solid rgba(239, 68, 68, 0.25) !important; }
-    .badge-review   { background: rgba(245, 158, 11, 0.1) !important; color: #fbbf24 !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; }
-    .badge-verified { background: rgba(16, 185, 129, 0.1) !important; color: #34d399 !important; border: 1px solid rgba(16, 185, 129, 0.25) !important; }
+    .badge-fail     { background: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; border: 1px solid rgba(239, 68, 68, 0.25) !important; }
+    .badge-review   { background: rgba(245, 158, 11, 0.1) !important; color: #d97706 !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; }
+    .badge-verified { background: rgba(16, 185, 129, 0.1) !important; color: #059669 !important; border: 1px solid rgba(16, 185, 129, 0.25) !important; }
 
     /* Thin line section accents */
     .section-accent {
@@ -395,23 +395,23 @@ def load_css():
         padding: 18px 22px !important; margin: 24px 0 !important;
         border-radius: 0 8px 8px 0 !important;
     }
-    .accent-fail     { border-left-color: #ef4444 !important; background: rgba(239, 68, 68, 0.015) !important; }
-    .accent-review   { border-left-color: #f59e0b !important; background: rgba(245, 158, 11, 0.015) !important; }
-    .accent-verified { border-left-color: #10b981 !important; background: rgba(16, 185, 129, 0.015) !important; }
+    .accent-fail     { border-left-color: #ef4444 !important; background: rgba(239, 68, 68, 0.02) !important; }
+    .accent-review   { border-left-color: #f59e0b !important; background: rgba(245, 158, 11, 0.02) !important; }
+    .accent-verified { border-left-color: #10b981 !important; background: rgba(16, 185, 129, 0.02) !important; }
 
     /* Output sections inside Report */
     .output-section {
-        background: rgba(255, 255, 255, 0.01) !important;
-        border: 1px solid rgba(255, 255, 255, 0.04) !important;
+        background: color-mix(in srgb, var(--background-color) 40%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 4%, transparent) !important;
         border-radius: 12px !important;
         padding: 24px !important;
         margin-bottom: 12px !important;
         line-height: 1.8;
     }
     .output-section h3 {
-        background: rgba(255, 255, 255, 0.02) !important;
+        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
         border-left: 3px solid #3b82f6 !important;
-        color: #f1f5f9 !important;
+        color: var(--text-color) !important;
         font-family: 'Outfit', sans-serif !important;
         font-size: 13px !important;
         font-weight: 700 !important;
@@ -424,27 +424,27 @@ def load_css():
         display: block !important;
     }
     .output-section h3:first-child { margin-top: 0 !important; }
-    .output-section p { color: #cbd5e1; margin: 8px 0; font-size: 14px; }
-    .output-section li { color: #cbd5e1; margin: 6px 0; font-size: 14px; }
+    .output-section p { color: color-mix(in srgb, var(--text-color) 85%, transparent); margin: 8px 0; font-size: 14px; }
+    .output-section li { color: color-mix(in srgb, var(--text-color) 85%, transparent); margin: 6px 0; font-size: 14px; }
     .output-section table {
         width: 100% !important; border-collapse: collapse !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
-        background: rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: color-mix(in srgb, var(--background-color) 60%, transparent) !important;
         border-radius: 8px !important; overflow: hidden !important; margin: 16px 0 !important;
     }
     .output-section th {
-        background: rgba(255, 255, 255, 0.02) !important; color: #94a3b8 !important;
+        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important; color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
         font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px;
-        padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+        padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
     }
     .output-section td {
-        padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
-        vertical-align: top; color: #e2e8f0; line-height: 1.65;
+        padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        vertical-align: top; color: var(--text-color); line-height: 1.65;
     }
     .output-section tr:last-child td { border-bottom: none; }
-    .output-section tr:nth-child(even) td { background: rgba(255, 255, 255, 0.005); }
+    .output-section tr:nth-child(even) td { background: color-mix(in srgb, var(--text-color) 0.5%, transparent); }
     .output-section code {
-        background: rgba(239, 68, 68, 0.05) !important; color: #f87171 !important;
+        background: rgba(239, 68, 68, 0.05) !important; color: #ef4444 !important;
         padding: 2px 6px; border-radius: 4px;
         font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
         border: 1px solid rgba(239, 68, 68, 0.15) !important;
@@ -452,8 +452,8 @@ def load_css():
 
     /* Score banner */
     .score-card {
-        background: rgba(15, 23, 42, 0.45) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
         border-top: 3px solid #3b82f6 !important;
         border-radius: 12px !important;
         padding: 20px 24px !important;
@@ -464,10 +464,10 @@ def load_css():
     
     .audit-done-banner {
         display: flex; align-items: center; gap: 12px;
-        background: rgba(16, 185, 129, 0.04) !important; border: 1px solid rgba(16, 185, 129, 0.2) !important;
+        background: rgba(16, 185, 129, 0.05) !important; border: 1px solid rgba(16, 185, 129, 0.2) !important;
         border-left: 4px solid #10b981 !important;
         border-radius: 8px; padding: 12px 18px;
-        color: #34d399; font-size: 13.5px; font-weight: 600;
+        color: #059669; font-size: 13.5px; font-weight: 600;
         margin-bottom: 20px; letter-spacing: 0.01em;
     }
     .audit-done-dot {
@@ -477,13 +477,13 @@ def load_css():
 
     /* Code block inside details */
     [data-testid="stCodeBlock"] {
-        background-color: #070a13 !important;
+        background-color: var(--secondary-background-color) !important;
         border-radius: 8px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         margin: 0 !important;
     }
     [data-testid="stCodeBlock"] code {
-        color: #cbd5e1 !important;
+        color: var(--text-color) !important;
         font-family: 'JetBrains Mono', monospace !important;
         font-size: 12.5px !important; line-height: 1.75 !important;
     }
@@ -491,7 +491,7 @@ def load_css():
     /* Modal Overlay (z-index 99999) */
     .fixed-overlay {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(4, 6, 12, 0.7);
+        background: color-mix(in srgb, var(--background-color) 70%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         z-index: 999998;
@@ -500,25 +500,25 @@ def load_css():
     .fixed-modal {
         position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
         border-radius: 16px; padding: 48px; width: 500px; max-width: 90vw;
-        box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.15), inset 0 1px 0 color-mix(in srgb, var(--text-color) 8%, transparent) !important;
         text-align: center; z-index: 999999;
-        background: rgba(11, 15, 25, 0.85) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        color: #e2e8f0 !important;
+        background: color-mix(in srgb, var(--secondary-background-color) 90%, transparent) !important;
+        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        color: var(--text-color) !important;
         animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     .fixed-modal h3 { 
         font-family: 'Outfit', sans-serif !important;
-        color: #ffffff !important; margin: 0 0 12px; font-weight: 700; font-size: 20px;
+        color: var(--text-color) !important; margin: 0 0 12px; font-weight: 700; font-size: 20px;
         letter-spacing: 0.03em; text-transform: uppercase;
     }
-    .fixed-modal p  { color: #94a3b8 !important; margin: 0; font-size: 13px; letter-spacing: 0.02em; }
+    .fixed-modal p  { color: color-mix(in srgb, var(--text-color) 60%, transparent) !important; margin: 0; font-size: 13px; letter-spacing: 0.02em; }
     .spinner-loader {
-        border: 2px solid rgba(255,255,255,0.05); border-top: 2px solid #3b82f6; border-radius: 50%;
+        border: 2px solid color-mix(in srgb, var(--text-color) 5%, transparent); border-top: 2px solid #3b82f6; border-radius: 50%;
         width: 40px; height: 40px; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin: 0 auto 24px auto;
     }
     .progress-container {
-        width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 24px 0 12px; overflow: hidden;
+        width: 100%; height: 4px; background: color-mix(in srgb, var(--text-color) 5%, transparent); border-radius: 10px; margin: 24px 0 12px; overflow: hidden;
     }
     .progress-fill {
         height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.4s cubic-bezier(0.1, 0.8, 0.1, 1);
@@ -537,7 +537,7 @@ def load_css():
     }
     .cancel-btn-container button {
         background: rgba(239, 68, 68, 0.1) !important;
-        color: #f87171 !important;
+        color: #ef4444 !important;
         border: 1px solid rgba(239, 68, 68, 0.3) !important;
         border-radius: 8px !important;
         font-size: 11px !important;
