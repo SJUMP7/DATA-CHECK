@@ -32,6 +32,48 @@ def load_css():
     .block-container { padding: 2rem 2.5rem 3rem !important; }
     section[data-testid="stSidebar"] { border-right: 1px solid var(--secondary-background-color) !important; }
 
+    /* Sidebar premium navigation radio styles */
+    div[data-testid="stSidebar"] div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        background-color: transparent !important;
+        padding: 0 !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label {
+        display: flex !important;
+        align-items: center !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(148, 163, 184, 0.12) !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+        color: var(--text-color) !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        cursor: pointer !important;
+        margin: 0 !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background-color: rgba(59, 130, 246, 0.05) !important;
+        border-color: rgba(59, 130, 246, 0.25) !important;
+        transform: translateY(-1px) !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08)) !important;
+        border-color: #3b82f6 !important;
+        color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1) !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"] {
+        display: none !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+        padding-left: 0 !important;
+        width: 100% !important;
+    }
+
     /* Sidebar clean buttons */
     section[data-testid="stSidebar"] .stDownloadButton button {
         background-color: transparent !important;
@@ -537,10 +579,36 @@ def save_key(k):
 def is_cloud_key():
     return bool(_CLOUD_KEY)
 
+# ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
+def apply_badges(text):
+    import re as _re
+    text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
+    text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
+    text = text.replace("&lt;div class=\"section-accent accent-verified\"&gt;", '<div class="section-accent accent-verified">')
+    text = text.replace("&lt;/div&gt;", '</div>')
+    text = text.replace("&lt;span class=\"badge", '<span class="badge')
+    text = text.replace("&lt;/span&gt;", '</span>')
+    text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
+    text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
+    text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
+    text = text.replace("[FAIL]", '<span class="badge badge-fail">FAIL</span>')
+    text = text.replace("[REVIEW]", '<span class="badge badge-review">REVIEW</span>')
+    text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
+    if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
+        text += "\n\n</div>\n\n"
+    # Spacing fix: ensure blank line before each bullet
+    text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
+    return text
+
 with st.sidebar:
     st.markdown("<div style='font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>EXCEL AUDITOR</div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 12px; font-weight: 500; opacity: 0.5; margin-bottom: 32px;'>Data Recheck Tool</div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>AI Engine</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 12px; font-weight: 500; opacity: 0.5; margin-bottom: 24px;'>Data Recheck Tool</div>", unsafe_allow_html=True)
+    
+    st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>NAVIGATION</div>", unsafe_allow_html=True)
+    page_options = ["🔍 Contract Auditor", "✨ AI Excel Generator"]
+    selected_page = st.radio("Navigation", page_options, label_visibility="collapsed")
+    
+    st.markdown("<br><div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>AI Engine</div>", unsafe_allow_html=True)
     saved_key = load_key()
 
     if is_cloud_key():
@@ -569,13 +637,92 @@ else:
     anim_class = ""
 
 # ─── Hero ─────────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<div class="hero {anim_class}">
-  <div class="h1">DATA AUDITOR</div>
-  <div class="sub">Precision Hotel Contract Verification.</div>
-</div>
-<div class="divider"></div>
-""", unsafe_allow_html=True)
+if selected_page == "🔍 Contract Auditor":
+    st.markdown(f"""
+    <div class="hero {anim_class}">
+      <div class="h1">DATA AUDITOR</div>
+      <div class="sub">Precision Hotel Contract Verification.</div>
+    </div>
+    <div class="divider"></div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown(f"""
+    <div class="hero {anim_class}">
+      <div class="h1">EXCEL GENERATOR</div>
+      <div class="sub">Generate Hotel Upload Files from PDF.</div>
+    </div>
+    <div class="divider"></div>
+    """, unsafe_allow_html=True)
+
+# ─── PAGE ROUTING ──────────────────────────────────────────────────────────────
+if selected_page == "✨ AI Excel Generator":
+    col1, col2 = st.columns(2, gap="large")
+
+    with col1:
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Contract PDF</div>', unsafe_allow_html=True)
+        pdf_file_gen = st.file_uploader("Upload PDF for Generation", type=["pdf"], key="pdf_gen", label_visibility="collapsed")
+        if pdf_file_gen:
+            st.session_state.cached_pdf_bytes = pdf_file_gen.getvalue()
+            st.session_state.cached_pdf_name = pdf_file_gen.name
+            st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{pdf_file_gen.name}</div>', unsafe_allow_html=True)
+        elif st.session_state.get("cached_pdf_name"):
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2 (OPTIONAL)</div><div class="c-ttl">Reference Excel</div>', unsafe_allow_html=True)
+        excel_ref_file = st.file_uploader("Upload Reference Excel", type=["xlsx", "xls"], key="excel_gen", label_visibility="collapsed")
+        if excel_ref_file:
+            st.session_state.cached_excel_bytes = excel_ref_file.getvalue()
+            st.session_state.cached_excel_name = excel_ref_file.name
+            st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{excel_ref_file.name}</div>', unsafe_allow_html=True)
+        elif st.session_state.get("cached_excel_name"):
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Process Button
+    has_pdf_gen = bool(pdf_file_gen or st.session_state.get("cached_pdf_bytes"))
+    gen_ready = bool(has_pdf_gen and api_key)
+    
+    _, btn_col, _ = st.columns([1.5, 3, 1.5])
+    with btn_col:
+        if st.button("Generate Upload Excel from PDF →", type="primary", use_container_width=True, disabled=not gen_ready):
+            with st.spinner("AI is analyzing and generating Excel..."):
+                try:
+                    from utils import extract_pdf_to_excel_json, create_upload_excel
+                    pdf_bytes_for_gen = pdf_file_gen.getvalue() if pdf_file_gen else st.session_state.get("cached_pdf_bytes")
+                    excel_bytes_for_gen = excel_ref_file.getvalue() if excel_ref_file else st.session_state.get("cached_excel_bytes")
+                    
+                    result = extract_pdf_to_excel_json(pdf_bytes_for_gen, api_key, excel_bytes=excel_bytes_for_gen)
+                    
+                    extracted_data = result[0] if isinstance(result, tuple) else result
+                    error_detail = result[1] if isinstance(result, tuple) and len(result) > 1 else None
+
+                    if extracted_data:
+                        excel_data = create_upload_excel(extracted_data)
+                        st.success("Excel generated successfully!")
+                        st.download_button(
+                            label="📥 Download Generated Upload File",
+                            data=excel_data,
+                            file_name=f"Generated_Upload_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    else:
+                        st.error("AI could not extract data. Please try again.")
+                        if error_detail:
+                            st.caption("🛠️ Technical Details (Debug):")
+                            st.code(error_detail, language="bash")
+                except Exception as e:
+                    st.error(f"Generation failed: {str(e)}")
+
+    if not gen_ready:
+        hint = "Upload PDF file to continue" if not has_pdf_gen else "Enter API Key in sidebar"
+        st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
+        
+    st.stop()
 
 # ─── Upload Area ───────────────────────────────────────────────────────────────
 _audit_done = st.session_state.get("audit_done", False)
@@ -686,66 +833,9 @@ else:
     selected_focus = st.session_state.get("focus_list", ["All-in-One Full Scan"])
 
 
-# ─── Experimental Generator Section [IN TEST] ────────────────────────────────
-st.markdown("<br><br>", unsafe_allow_html=True)
-exp_col_1, exp_col_2, exp_col_3 = st.columns([1, 4, 1])
-with exp_col_2:
-    with st.expander("✨ Experimental: AI Excel Generator [IN TEST]", expanded=False):
-        st.info("ระบบสร้างไฟล์ Upload อัตโนมัติจาก PDF โดยตรง (เบต้า)")
-        gen_ready = bool((pdf_file or st.session_state.get("cached_pdf_bytes")) and api_key)
-        if st.button("Generate Upload Excel from PDF →", use_container_width=True, disabled=not gen_ready):
-            with st.spinner("AI is analyzing and generating Excel..."):
-                try:
-                    from utils import extract_pdf_to_excel_json, create_upload_excel
-                    pdf_bytes_for_gen = pdf_file.getvalue() if pdf_file else st.session_state.get("cached_pdf_bytes")
-                    excel_bytes_for_gen = excel_file.getvalue() if excel_file else st.session_state.get("cached_excel_bytes")
-                    result = extract_pdf_to_excel_json(pdf_bytes_for_gen, api_key, excel_bytes=excel_bytes_for_gen)
-                    
-                    # Result is now a tuple (data, error_msg)
-                    extracted_data = result[0] if isinstance(result, tuple) else result
-                    error_detail = result[1] if isinstance(result, tuple) and len(result) > 1 else None
-
-                    if extracted_data:
-                        excel_data = create_upload_excel(extracted_data)
-                        st.success("Excel generated successfully!")
-                        st.download_button(
-                            label="📥 Download Generated Upload File",
-                            data=excel_data,
-                            file_name=f"Generated_Upload_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
-                    else:
-                        st.error("AI could not extract data. Please try again.")
-                        if error_detail:
-                            st.caption("🛠️ Technical Details (Debug):")
-                            st.code(error_detail, language="bash")
-                except Exception as e:
-                    st.error(f"Generation failed: {str(e)}")
-
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 
-# ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
-def apply_badges(text):
-    import re as _re
-    text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
-    text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
-    text = text.replace("&lt;div class=\"section-accent accent-verified\"&gt;", '<div class="section-accent accent-verified">')
-    text = text.replace("&lt;/div&gt;", '</div>')
-    text = text.replace("&lt;span class=\"badge", '<span class="badge')
-    text = text.replace("&lt;/span&gt;", '</span>')
-    text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
-    text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
-    text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
-    text = text.replace("[FAIL]", '<span class="badge badge-fail">FAIL</span>')
-    text = text.replace("[REVIEW]", '<span class="badge badge-review">REVIEW</span>')
-    text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
-    if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
-        text += "\n\n</div>\n\n"
-    # Spacing fix: ensure blank line before each bullet
-    text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
-    return text
 
 
 # ─── Analysis Output ──────────────────────────────────────────────────────────

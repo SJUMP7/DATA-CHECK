@@ -495,59 +495,78 @@ COLUMN RULES & FORMATTING:
 2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
 3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
 4. HTML FORMATTING REQUIRED (STRICT TEMPLATES):
+   Every line must be wrapped in <p>...</p> tags, and all styling (colors, bolds) must strictly follow the patterns below. Never use <br> for line breaks. Use <p>&nbsp;</p> for blank lines.
 
 [cancellation_policy Template]
-CANCELLATION : [LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD]<br>
-• Cancellation made [policy details]<br>
-• <span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : [policy details]<br>
-<span style="color: red; font-weight: bold;">*Remark</span> : [details if any]
+<p><strong>CANCELLATION ([LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD])</strong></p>
+<p>• Cancellation made [policy details]</p>
+<p><strong>NO SHOW</strong></p>
+<p>• [policy details]</p>
 
 [child_policy Template]
-<span style="color: green; font-weight: bold;">Room rate includes ABF for [xx] persons</span><br>
-<span style="color: green; font-weight: bold;">Maximum Occupancy : [XA / XA+XC]</span><br><br>
-[policy details]<br><br>
-in case have 2 Children;<br>
-if have <strong>2 children ([xx-xx.99] years old)</strong> stay in room, subject to charge as policy below;<br>
-1st child [policy]<br>
-2nd child [policy]<br><br>
-Adult [policy]<br>
-<span style="color: red; font-weight: bold;">*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</span>
+<p>Child [min] - [max] years old sharing bed + ABF = [charge/FOC]</p>
+<p>&nbsp;</p>
+<p><span style="color:#f44336;"><span>*Baby cot for child 0-1.99 yeras old is free of charge (subject to availability)</span></span></p>
+<p><span style="color:#f44336;"><span>**Extra bed <strong>CANNOT</strong> be set up in [Room Name].</span></span></p>
+[meals_and_info Template for Main Contract or Early Bird]
+<p><strong>[Important notices / changed hotel name info if any]</strong></p>
+<p>&nbsp;</p>
+<hr class="custom-cursor-default-hover" />
+<p><span style="color: #0000ff;"><strong>MAIN CONTRACT [Year]: [Period]</strong></span></p>
+<p><strong>※ SUPPLEMENT CHARGE</strong></p>
+<p>• Surcharge for stay during <strong>[Holiday] on [Period] = [Price] THB per room per night</strong></p>
+<p>&nbsp;</p>
+<p><strong>※ MEAL PLANS</strong></p>
+<p>• Half Board (Lunch OR Dinner)</p>
+<p>• Full Board (Lunch AND Dinner)</p>
+<p><span style="color: #ff0000;"><strong>Remark:</strong></span></p>
+<p>• [Meal policy details]</p>
+<p>&nbsp;</p>
+<p><span style="color: #008000;"><strong>※ OPTIONAL NEW YEAR EVE DINNER ON 31 DEC [Year]</strong></span></p>
+<p>ADT = [Price] THB</p>
+<p>&nbsp;</p>
+<p><strong>※ TRANSFER</strong></p>
+<p><strong>[Transfer options, e.g. From/To Airport]</strong></p>
+<p>• Luxury Car (Maximum 3 persons) : One way = [Price] THB per car / Round trip = [Price] THB per car</p>
+<p>&nbsp;</p>
+<p><strong>※ EARLY BIRD OFFER</strong></p>
+<p><span style="color: #ff0000;"><strong>*Blackout will be advised by Hotel in writing.</strong></span></p>
+<p>• E.B [Days] Days get [Discount]% Discount.</p>
+<p>&nbsp;</p>
+<p><strong>※ A MINIMUM STAY</strong></p>
+<p><strong><span style="color: #ff0000;">*Blackout will be advised by Hotel in writing.</span></strong></p>
+<p>• <strong>Minimum [x] consecutive nights</strong> gets [Discount]% discount.</p>
+<p>&nbsp;</p>
+<p><strong>※ LONG STAY OFFER </strong><span style="color: #0000ff;"><strong>#MIN. [x] NIGHTS</strong></span></p>
+<p>• [Long stay details]</p>
+<p>&nbsp;</p>
+<p><strong>※ HONEYMOON / ANNIVERSARY </strong><span style="color: #0000ff;"><strong>#MIN. [x] NIGHTS</strong></span></p>
+<p><span style="color: #ff0000;"><strong>**Wedding Certificate or copy must be presented</strong></span></p>
+<p>• [Honeymoon details]</p>
 
-[meals_and_info Template]
-<span style="color: red; font-weight: bold;">#MIN. [XX] NIGHTS - COMPULSORY CHRISTMAS/NEW YEAR'S GALA DINNER on [xx - xx]</span><br>
-<span style="color: red; font-weight: bold;">**NOT ALLOWED CHECK OUT on [xx]**</span> (only peak / period that have conditions)
-<hr>
-<strong>MAIN CONTRACT [Year] : [Period]</strong><br><br>
-<span style="color: orange; font-weight: bold;">[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(only for Peak)</span><br>
-<strong>MIN. [XX] NIGHTS during [xx-xx]</strong><br>
-<strong>NOT ALLOWED CHECK OUT on [xx]</strong><br><br>
-※ <strong>Compulsory</strong> New Year's Gala Dinner on 31 DEC [xx]<br>
-Adult = [xxx] THB / Child ([age]) = [xxx] THB<br>
-<span style="color: red; font-weight: bold;">*Remark : </span>[details]<br>
-<span style="color: orange; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</span><br><br>
-※ <strong>MEAL RATES</strong><br>
-<strong>Half Board</strong> (Lunch OR Dinner) = [xxx] THB<br>
-<strong>Full Board</strong> (Lunch AND Dinner) = [xxx] THB<br>
-<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
-※ <strong>Compulsory / Optional Meal Plan</strong><br>
-Adult = [xxx] THB / Child = [xxx] THB<br>
-<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
-※ <strong>Benefits</strong><br>[details]<br><br>
-※ <strong>Transfer</strong><br>[details]<br><br>
-※ <strong>Early Bird</strong><br>
-<span style="color: blue; font-weight: bold;">Validity : [Period]</span><br>
-<span style="color: red; font-weight: bold;">*Black Out : [Period]</span><br>
-• E.B [xx] Days, get [xx]% discount.<br>
-<span style="color: red; font-weight: bold;">*Remark :</span> [details]<br><br>
-※ <strong>Long Stay Offer / Minimum Nights Stay Offer</strong><br>
-<span style="color: blue; font-weight: bold;">Validity : [Period]</span><br>
-<span style="color: red; font-weight: bold;">*Black Out : [Period]</span><br>
-• <span style="color: green; font-weight: bold;">#MIN. [X] NIGHTS</span>, get [xx]% discount<br><br>
-※ <strong>Honeymooner / Anniversary</strong><br>[details]
+[meals_and_info Template for Promotion (STRICT PATTERN)]
+<p><strong>PROMOTION : [Promotion Name]</strong></p>
+<p><span style="color: #0000ff;"><strong>Promo code : [Promotion Code - MUST MATCH promo_code column]</strong></span></p>
+<p><strong>Stay : [Validity Period, e.g. 1 Nov 26 - 31 Oct 27]</strong></p>
+<p><strong>Book by : [Book by date, or if not specified in the contract, MUST use the end date of the validity period]</strong></p>
+<p><span style="color: #ff0000;"><strong>*Black Out : [Black out dates if any, else omit this line]</strong></span></p>
+<p>&nbsp;</p>
+<p><span style="color: #008000;"><strong>※ [Offer / Benefits / Minimum nights required, e.g. Offer / Minimum 3 nights stay]</strong></span></p>
+<p>• [Details of the promotion offer, e.g., get 15% discount on contract rate]</p>
+<p>&nbsp;</p>
+<p><strong>Terms and Conditions :</strong></p>
+<p>• [Condition 1, e.g. Promotion rates are non-refundable]</p>
+<p>• [Condition 2, e.g. Cannot be combined with other offers]</p>
 
-5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0).
-6. PERIOD SPLITTING: Split into separate rows if conditions change within the season.
-7. MISSING DATA: For any key not found, output "". DO NOT output 0 or FALSE.
+5. promo_book_till & Book by Rule:
+   - For contract_type = "Promotion" or "Early Bird", check the contract for the "Book by" or "Booking period" end date.
+   - If the contract PDF does NOT specify a "Book by" / "Booking period" end date, you MUST fallback to using the end_date of the stay validity period.
+   - In Excel, set the promo_book_till column value to the Book by date formatted exactly as "YYYY-MM-DD 23:59:59" (using the stay end date as fallback if not specified).
+   - In the meals_and_info HTML content under "Book by :", output the same date (e.g. "31 Oct 2027" or "YYYY-MM-DD").
+6. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0).
+7. PERIOD SPLITTING: Split into separate rows if conditions change within the season.
+8. MISSING DATA: For any key not found, output "". DO NOT output 0 or FALSE.
+
 
 OUTPUT FORMAT: A pure JSON LIST of objects with REQUIRED KEYS: {json.dumps(EXCEL_UPLOAD_COLUMNS[6:])}
 CRITICAL: Return ONLY valid JSON — no markdown, no backticks, no explanation text.
@@ -715,6 +734,25 @@ def create_upload_excel(data_list: list):
     
     # Optional logic: if AI left room_allotment empty, set it
     df['room_allotment'] = df['room_allotment'].replace("", "Free Sales")
+    
+    # ── promo_book_till fallback logic ───────────────────────────────────────
+    # If contract_type is "Promotion" or "Early Bird", and promo_book_till is empty/null/missing,
+    # set it to the stay's end_date with time set to 23:59:59.
+    def fill_promo_book_till(row):
+        ctype = str(row.get('contract_type', '')).strip().lower()
+        book_till = row.get('promo_book_till')
+        if ctype in ['promotion', 'early bird']:
+            if pd.isna(book_till) or str(book_till).strip() == "" or str(book_till).strip().lower() in ["none", "null", "nan"]:
+                end_dt = str(row.get('end_date', '')).strip()
+                if end_dt:
+                    date_part = end_dt.split(' ')[0]
+                    if re.match(r'^\d{4}-\d{2}-\d{2}$', date_part):
+                        return f"{date_part} 23:59:59"
+        return book_till
+
+    if 'promo_book_till' in df.columns:
+        df['promo_book_till'] = df.apply(fill_promo_book_till, axis=1)
+
     
     # ── Room name cleanup & dynamic ABF setup ─────────────────────────────────
     # If the extracted room name contains suffix like (RB), (RO), Room with Breakfast, etc.
