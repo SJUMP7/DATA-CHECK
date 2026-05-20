@@ -77,12 +77,12 @@ def detect_available_model(api_key: str) -> tuple[str, list[str]]:
         and not any(skip in short.lower() for skip in skip_keywords)
     ]
 
-    # Prefer stable, high-quota models
+    # Prefer stable, high-quota models for large JSON generation
     preferred_order = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
         "gemini-1.5-flash-latest",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-2.0-flash-001",
     ]
     for preferred in preferred_order:
@@ -460,19 +460,35 @@ Use it to:
 
     return f"""
 ACT AS: Senior Hotel Data Specialist.
-TASK: Extract EVERY rate season, room type, and promotion from the attached PDF into a JSON list.
+TASK: Extract EVERY contract type, room type, rate season, and promotion from the attached PDF into a JSON list.
 
 {extra_instruction}
 {reference_section}
-ROW GENERATION RULE:
-- Each row = ONE unique combination of [Room Type] + [Season/Period] + [Rate Type (Main/Promo/Early Bird)]
-- A single-room promotion contract may have only 1 row — that is valid.
-- A main contract with multiple room types and seasons MUST produce one row per combination.
-- DO NOT merge multiple rooms into one row. DO NOT merge multiple seasons into one row.
-- Count the room types and seasons from the PDF, then verify your row count matches before outputting.
+━━━ PHASE 1: MANDATORY PRE-SCAN (DO THIS FIRST BEFORE GENERATING ANY ROWS) ━━━
+Read the ENTIRE PDF from first page to last page. Identify and list:
+  A. All CONTRACT TYPES present: Main Contract? Early Bird? Promotion? POR?
+  B. All ROOM TYPES / ROOM NAMES listed in the contract tables.
+  C. All SEASONS / PERIODS (e.g., Low Season, High Season, Peak Season, specific date ranges).
+Do NOT generate any rows yet. Count A × B × C = total rows you MUST produce.
+
+━━━ PHASE 2: EXTRACTION ━━━
+Generate one row per unique combination of [Room Type] + [Season/Period] + [Contract Type]:
+- Main Contract rows: one per room type per season period.
+- Early Bird rows: one per room type per EB tier (e.g., EB 60 days, EB 90 days).
+- Promotion rows: one per room type per promotion period.
+- DO NOT merge multiple rooms into one row.
+- DO NOT merge multiple seasons into one row.
+- A single-room / single-promotion contract may legitimately have only 1–2 rows.
+
+━━━ PHASE 3: SELF-CHECK BEFORE OUTPUTTING ━━━
+Before returning JSON, verify:
+  - Did you include ALL contract types found in Phase 1?
+  - Did you include ALL room types in EACH contract type section?
+  - Is your total row count close to A × B × C from Phase 1?
+If not, go back and add the missing rows.
 
 COLUMN RULES & FORMATTING:
-1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000".
+1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000" (always include time).
 2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
 3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
 4. HTML FORMATTING REQUIRED (STRICT TEMPLATES):
@@ -542,18 +558,43 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes
 
     # ── Parse existing Excel for reference context (if available) ─────────────
     reference_csv = ""
-    expected_rows = None  # None = unknown; skip validation
+    expected_rows = None  # None = unknown; skip row count validation
     if excel_bytes:
         try:
             ref_df = pd.read_excel(io.BytesIO(excel_bytes), header=0, sheet_name=0)
             ref_df = ref_df.dropna(how='all')
-            expected_rows = max(1, len(ref_df))  # at least 1 (valid for promo-only)
-            # Build a lean CSV preview (drop HTML-heavy cols to save tokens)
+
+            # Detect multi-hotel file: if >1 unique hotel_supplier → don't use row count
+            # (the file is a combined export, not a single-hotel contract)
+            if 'hotel_supplier' in ref_df.columns:
+                unique_hotels = ref_df['hotel_supplier'].dropna().nunique()
+                if unique_hotels == 1:
+                    # Single hotel → row count is meaningful for validation
+                    expected_rows = max(1, len(ref_df))
+                # else: multi-hotel → keep expected_rows = None, skip validation
+
+            # Always build format reference CSV (helps AI learn column format)
+            # We select a diverse subset of rows (e.g. 1 sample row per contract_type/room_name combination)
+            # to show the model how different contract types look without overwhelming it with repetitive rows.
             lean_cols = [c for c in ref_df.columns if c not in [
                 'cancellation_policy', 'cancellation_policy_net',
                 'child_policy', 'meals_and_info'
             ]]
-            reference_csv = ref_df[lean_cols].head(30).to_csv(index=False)
+            
+            # Find unique combination examples
+            group_keys = []
+            if 'contract_type' in ref_df.columns: group_keys.append('contract_type')
+            if 'room_name' in ref_df.columns: group_keys.append('room_name')
+            
+            if group_keys:
+                # Group and take the first row of each group
+                sample_df = ref_df.groupby(group_keys, as_index=False).first()
+                # If still too large, limit to 8 rows
+                sample_df = sample_df[lean_cols].head(8)
+            else:
+                sample_df = ref_df[lean_cols].head(5)
+                
+            reference_csv = sample_df.to_csv(index=False)
         except Exception:
             pass  # If Excel can't be read, proceed without reference
 
@@ -668,6 +709,31 @@ def create_upload_excel(data_list: list):
     
     # Optional logic: if AI left room_allotment empty, set it
     df['room_allotment'] = df['room_allotment'].replace("", "Free Sales")
+    
+    # ── Room name cleanup & dynamic ABF setup ─────────────────────────────────
+    # If the extracted room name contains suffix like (RB), (RO), Room with Breakfast, etc.
+    # We clean the room_name and map it to the proper 'abf' column.
+    def clean_room_and_abf(row):
+        rname = str(row['room_name']).strip()
+        abf_val = str(row['abf']).strip() if 'abf' in row else 'Included'
+        
+        # Check for RO / Room Only
+        if re.search(r'\b(ro|room\s+only)\b', rname, re.IGNORECASE):
+            abf_val = 'Excluded'
+        # Check for RB / Breakfast
+        elif re.search(r'\b(rb|breakfast|abf)\b', rname, re.IGNORECASE):
+            abf_val = 'Included'
+            
+        # Clean up the name (remove (RO), (RB), RO, RB, [RO], [RB] only if they are separate words or in brackets)
+        rname_clean = re.sub(r'[\(\[\{]?\b(ro|rb|room\s+only|breakfast|abf)\b[\)\]\}]?', '', rname, flags=re.IGNORECASE)
+        # Also clean up trailing/leading dashes or empty brackets
+        rname_clean = re.sub(r'\s*-\s*$', '', rname_clean)
+        rname_clean = re.sub(r'\s+', ' ', rname_clean).strip()
+        
+        return pd.Series([rname_clean, abf_val])
+        
+    if 'room_name' in df.columns:
+        df[['room_name', 'abf']] = df.apply(clean_room_and_abf, axis=1)
     
     # 2. FORCE EMPTY STRING ON COLUMNS THAT SHOULD NOT HAVE 0
     empty_cols = [
