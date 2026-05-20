@@ -926,12 +926,8 @@ def is_cloud_key():
 # ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
 def apply_badges(text):
     import re as _re
-    text = text.replace("&lt;div class=\"section-accent accent-fail\"&gt;", '<div class="section-accent accent-fail">')
-    text = text.replace("&lt;div class=\"section-accent accent-review\"&gt;", '<div class="section-accent accent-review">')
-    text = text.replace("&lt;div class=\"section-accent accent-verified\"&gt;", '<div class="section-accent accent-verified">')
-    text = text.replace("&lt;/div&gt;", '</div>')
-    text = text.replace("&lt;span class=\"badge", '<span class="badge')
-    text = text.replace("&lt;/span&gt;", '</span>')
+    import html
+    text = html.unescape(text)
     text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
     text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
     text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
@@ -1538,12 +1534,12 @@ _is_auditing = st.session_state.get("is_auditing", False)
 if _audit_done:
     _left, _right1, _right2 = st.columns([4, 1.5, 1.5])
     with _right1:
-        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True):
+        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True, key="edit_scope_top_btn"):
             for key in ["audit_done", "is_auditing", "_audit_result"]:
                 st.session_state.pop(key, None)
             st.rerun()
     with _right2:
-        if st.button("START FRESH", use_container_width=True):
+        if st.button("START FRESH", use_container_width=True, key="start_fresh_top_btn"):
             st.session_state.confirm_reset = True
             st.rerun()
 
@@ -1776,11 +1772,11 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
     st.markdown("<br>", unsafe_allow_html=True)
     _, reaudit_btn, reset_btn, _ = st.columns([1, 2, 2, 1])
     with reaudit_btn:
-        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True):
+        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True, key="edit_scope_btm_btn"):
             for key in ["audit_done", "is_auditing", "_audit_result"]:
                 st.session_state.pop(key, None)
             st.rerun()
     with reset_btn:
-        if st.button("RESET / NEW UPLOAD", use_container_width=True):
+        if st.button("RESET / NEW UPLOAD", use_container_width=True, key="reset_btm_btn"):
             st.session_state.confirm_reset = True
             st.rerun()
