@@ -206,6 +206,9 @@ def load_css():
         color: #3b82f6 !important;
         box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 12%, transparent) !important;
     }
+    div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"],
+    div[data-testid="stSidebar"] div[role="radiogroup"] .st-bs,
+    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child:empty,
     div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
@@ -701,20 +704,20 @@ def load_css():
         flex-shrink: 0;
     }
 
-    /* Transparent Button Overlays */
-    .transparent-btn-wrapper {
+    /* Transparent Button Overlays using CSS :has() */
+    div[data-testid="stVerticalBlock"]:has(.toggle-btn-wrapper) {
         position: relative;
         margin-top: -84px; /* Overlay the 60px header container + margins! */
         height: 60px;
         margin-bottom: 24px;
         z-index: 10;
     }
-    .transparent-btn-wrapper button {
+    div[data-testid="stVerticalBlock"]:has(.toggle-btn-wrapper) div.stButton button {
         background: transparent !important;
         border: none !important;
+        opacity: 0 !important;
         width: 100% !important;
         height: 100% !important;
-        opacity: 0 !important;
         cursor: pointer !important;
     }
 
@@ -824,7 +827,6 @@ def load_css():
     }
 
     /* Transparent click wrappers for selector items */
-    .click-item-wrapper {
         position: fixed;
         width: 276px;
         height: 60px;
@@ -857,64 +859,7 @@ def load_css():
     </style>
     """, unsafe_allow_html=True)
     
-    import streamlit.components.v1 as components
-    components.html("""
-    <script>
-    const observer = new MutationObserver(() => {
-        const buttons = window.parent.document.querySelectorAll('.stButton button');
-        buttons.forEach(b => {
-            if(b.innerText.includes('Toggle Selector Menu')) {
-                const container = b.closest('.element-container');
-                if(container) {
-                    container.style.position = 'absolute';
-                    container.style.marginTop = '-84px';
-                    container.style.height = '60px';
-                    container.style.width = '100%';
-                    container.style.zIndex = '10';
-                    container.style.opacity = '0';
-                }
-            }
-            if(b.innerText.includes('Close Selector')) {
-                const container = b.closest('.element-container');
-                if(container) {
-                    container.style.position = 'fixed';
-                    container.style.top = '0';
-                    container.style.left = '0';
-                    container.style.width = '100vw';
-                    container.style.height = '100vh';
-                    container.style.zIndex = '999990';
-                    container.style.opacity = '0';
-                }
-            }
-            if(b.innerText.includes('Select Data Auditor App')) {
-                const container = b.closest('.element-container');
-                if(container) {
-                    container.style.position = 'absolute';
-                    container.style.top = '156px';
-                    container.style.left = '36px';
-                    container.style.width = '276px';
-                    container.style.height = '60px';
-                    container.style.zIndex = '999997';
-                    container.style.opacity = '0';
-                }
-            }
-            if(b.innerText.includes('Select Contract Compare App')) {
-                const container = b.closest('.element-container');
-                if(container) {
-                    container.style.position = 'absolute';
-                    container.style.top = '224px';
-                    container.style.left = '36px';
-                    container.style.width = '276px';
-                    container.style.height = '60px';
-                    container.style.zIndex = '999997';
-                    container.style.opacity = '0';
-                }
-            }
-        });
-    });
-    observer.observe(window.parent.document.body, {childList: true, subtree: true});
-    </script>
-    """, height=0)
+
 
 # Call CSS setup
 load_css()
@@ -1019,11 +964,11 @@ with st.sidebar:
 
     # 1. Overlay Backdrop wrapper if open
     if st.session_state.get("app_selector_open", False):
-        st.markdown('<div class="close-overlay-wrapper">', unsafe_allow_html=True)
-        if st.button("Close Selector", key="close_selector_overlay", use_container_width=True):
-            st.session_state.app_selector_open = False
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="close-overlay-wrapper"></div>', unsafe_allow_html=True)
+            if st.button("Close Selector", key="close_selector_overlay", use_container_width=True):
+                st.session_state.app_selector_open = False
+                st.rerun()
 
     # 2. Launcher Header UI
     chevron_symbol = "▼"
@@ -1041,11 +986,11 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # 3. Transparent Overlay Button for Launcher Header
-    st.markdown('<div class="transparent-btn-wrapper">', unsafe_allow_html=True)
-    if st.button("Toggle Selector Menu", key="toggle_selector_btn", use_container_width=True):
-        st.session_state.app_selector_open = not st.session_state.app_selector_open
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="toggle-btn-wrapper"></div>', unsafe_allow_html=True)
+        if st.button("Toggle Selector Menu", key="toggle_selector_btn", use_container_width=True):
+            st.session_state.app_selector_open = not st.session_state.app_selector_open
+            st.rerun()
 
     # 4. Floating Popup Card Menu
     if st.session_state.get("app_selector_open", False):
@@ -1054,55 +999,52 @@ with st.sidebar:
         da_badge = '<span class="active-badge">Active</span>' if active_app == "DATA AUDITOR" else ""
         cc_badge = '<span class="active-badge">Active</span>' if active_app == "CONTRACT COMPARE" else ""
         
-        st.markdown(f"""
-        <div class="app-popup-card">
-            <div class="popup-header">
-                <div class="building-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6; vertical-align: middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="16"></line><line x1="15" y1="22" x2="15" y2="16"></line><line x1="9" y1="16" x2="15" y2="16"></line><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M16 14h.01"></path></svg>
-                </div>
-                <div class="header-text">
-                    <div class="title">APPLICATIONS</div>
-                    <div class="subtitle">Select active auditor application</div>
-                </div>
-            </div>
-            <div class="divider-line"></div>
-            
-            <!-- DATA AUDITOR ITEM -->
-            <div class="app-item-card {da_active}">
-                <div class="logo-circle da-logo">DA</div>
-                <div class="item-text">
-                    <div class="item-title">DATA AUDITOR</div>
-                    <div class="item-subtitle">Excel Rate Auditing</div>
-                </div>
-                {da_badge}
-            </div>
-            
-            <!-- CONTRACT COMPARE ITEM -->
-            <div class="app-item-card {cc_active}" style="margin-top: 8px;">
-                <div class="logo-circle cc-logo">CC</div>
-                <div class="item-text">
-                    <div class="item-title">CONTRACT COMPARE</div>
-                    <div class="item-subtitle">PDF Comparison Engine</div>
-                </div>
-                {cc_badge}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        html_str = f"""<div class="app-popup-card">
+<div class="popup-header">
+<div class="building-icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6; vertical-align: middle;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="16"></line><line x1="15" y1="22" x2="15" y2="16"></line><line x1="9" y1="16" x2="15" y2="16"></line><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M16 14h.01"></path></svg>
+</div>
+<div class="header-text">
+<div class="title">APPLICATIONS</div>
+<div class="subtitle">Select active auditor application</div>
+</div>
+</div>
+<div class="divider-line"></div>
+<!-- DATA AUDITOR ITEM -->
+<div class="app-item-card {da_active}">
+<div class="logo-circle da-logo">DA</div>
+<div class="item-text">
+<div class="item-title">DATA AUDITOR</div>
+<div class="item-subtitle">Excel Rate Auditing</div>
+</div>
+{da_badge}
+</div>
+<!-- CONTRACT COMPARE ITEM -->
+<div class="app-item-card {cc_active}" style="margin-top: 8px;">
+<div class="logo-circle cc-logo">CC</div>
+<div class="item-text">
+<div class="item-title">CONTRACT COMPARE</div>
+<div class="item-subtitle">PDF Comparison Engine</div>
+</div>
+{cc_badge}
+</div>
+</div>"""
+        st.markdown(html_str, unsafe_allow_html=True)
 
         # 5. Floating Popup Card Click Overlays
-        st.markdown('<div class="click-item-wrapper" style="top: 156px; left: 36px;">', unsafe_allow_html=True)
-        if st.button("Select Data Auditor App", key="select_da_app", use_container_width=True):
-            st.session_state.active_app = "DATA AUDITOR"
-            st.session_state.app_selector_open = False
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="popup-da-btn-wrapper"></div>', unsafe_allow_html=True)
+            if st.button("Select Data Auditor App", key="select_da_app", use_container_width=True):
+                st.session_state.active_app = "DATA AUDITOR"
+                st.session_state.app_selector_open = False
+                st.rerun()
 
-        st.markdown('<div class="click-item-wrapper" style="top: 224px; left: 36px;">', unsafe_allow_html=True)
-        if st.button("Select Contract Compare App", key="select_cc_app", use_container_width=True):
-            st.session_state.active_app = "CONTRACT COMPARE"
-            st.session_state.app_selector_open = False
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="popup-cc-btn-wrapper"></div>', unsafe_allow_html=True)
+            if st.button("Select Contract Compare App", key="select_cc_app", use_container_width=True):
+                st.session_state.active_app = "CONTRACT COMPARE"
+                st.session_state.app_selector_open = False
+                st.rerun()
 
     # ─── Navigation Radio Page Routing ───
     st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;'>NAVIGATION</div>", unsafe_allow_html=True)
