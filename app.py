@@ -591,10 +591,15 @@ _show = st.session_state.show_upload
 
 # Render a clean minimal header row
 if _audit_done:
-    _left, _right = st.columns([6, 1])
-    with _right:
-        if st.button("New Audit", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel"]:
+    _left, _right1, _right2 = st.columns([4, 1.5, 1.5])
+    with _right1:
+        if st.button("Edit Scope / Re-Audit", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result", "show_upload"]:
+                st.session_state.pop(key, None)
+            st.rerun()
+    with _right2:
+        if st.button("Start Fresh", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name"]:
                 st.session_state.pop(key, None)
             st.rerun()
 
@@ -605,14 +610,22 @@ if _show:
         st.markdown(f'<div class="unified-card {anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl">Contract PDF</div>', unsafe_allow_html=True)
         pdf_file = st.file_uploader("Upload PDF", type=["pdf"], key="pdf", label_visibility="collapsed")
         if pdf_file:
+            st.session_state.cached_pdf_bytes = pdf_file.getvalue()
+            st.session_state.cached_pdf_name = pdf_file.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{pdf_file.name}</div>', unsafe_allow_html=True)
+        elif st.session_state.get("cached_pdf_name"):
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_pdf_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
         st.markdown(f'<div class="unified-card {anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl">Data Excel</div>', unsafe_allow_html=True)
         excel_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="excel", label_visibility="collapsed")
         if excel_file:
+            st.session_state.cached_excel_bytes = excel_file.getvalue()
+            st.session_state.cached_excel_name = excel_file.name
             st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{excel_file.name}</div>', unsafe_allow_html=True)
+        elif st.session_state.get("cached_excel_name"):
+            st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">🔄 Cached: {st.session_state.cached_excel_name}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ─── Audit Focus ──────────────────────────────────────────────────────────
@@ -651,7 +664,10 @@ if _show:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ─── Process Button ────────────────────────────────────────────────────────
-    ready = bool(pdf_file and excel_file and api_key)
+    has_pdf = bool(pdf_file or st.session_state.get("cached_pdf_bytes"))
+    has_excel = bool(excel_file or st.session_state.get("cached_excel_bytes"))
+    ready = bool(has_pdf and has_excel and api_key)
+    
     _, btn_col, _ = st.columns([1.5, 3, 1.5])
     with btn_col:
         if st.button("Start Audit", type="primary", use_container_width=True, disabled=not ready):
@@ -660,7 +676,7 @@ if _show:
             st.session_state.focus_list = selected_focus
 
     if not ready and not st.session_state.get("is_auditing"):
-        hint = "Upload PDF and Excel files to continue" if not (pdf_file and excel_file) else "Enter API Key in sidebar"
+        hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in sidebar"
         st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
 
 else:
@@ -676,12 +692,14 @@ exp_col_1, exp_col_2, exp_col_3 = st.columns([1, 4, 1])
 with exp_col_2:
     with st.expander("✨ Experimental: AI Excel Generator [IN TEST]", expanded=False):
         st.info("ระบบสร้างไฟล์ Upload อัตโนมัติจาก PDF โดยตรง (เบต้า)")
-        gen_ready = bool(pdf_file and api_key)
+        gen_ready = bool((pdf_file or st.session_state.get("cached_pdf_bytes")) and api_key)
         if st.button("Generate Upload Excel from PDF →", use_container_width=True, disabled=not gen_ready):
             with st.spinner("AI is analyzing and generating Excel..."):
                 try:
                     from utils import extract_pdf_to_excel_json, create_upload_excel
-                    result = extract_pdf_to_excel_json(pdf_file.getvalue(), api_key)
+                    pdf_bytes_for_gen = pdf_file.getvalue() if pdf_file else st.session_state.get("cached_pdf_bytes")
+                    excel_bytes_for_gen = excel_file.getvalue() if excel_file else st.session_state.get("cached_excel_bytes")
+                    result = extract_pdf_to_excel_json(pdf_bytes_for_gen, api_key, excel_bytes=excel_bytes_for_gen)
                     
                     # Result is now a tuple (data, error_msg)
                     extracted_data = result[0] if isinstance(result, tuple) else result
@@ -766,7 +784,10 @@ if st.session_state.get("is_auditing"):
     full_response = ""
     chunk_count = 0
     try:
-        for chunk in stream_recheck_analysis(pdf_file.getvalue(), excel_file.getvalue(), api_key, st.session_state.focus_list):
+        pdf_bytes_to_use = pdf_file.getvalue() if pdf_file else st.session_state.get("cached_pdf_bytes")
+        excel_bytes_to_use = excel_file.getvalue() if excel_file else st.session_state.get("cached_excel_bytes")
+        
+        for chunk in stream_recheck_analysis(pdf_bytes_to_use, excel_bytes_to_use, api_key, st.session_state.focus_list):
             chunk_count += 1
             
             # Smart Progress Logic
@@ -863,9 +884,14 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
         _show_saved_report(saved_result)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    _, reset_btn, _ = st.columns([1.5, 3, 1.5])
+    _, reaudit_btn, reset_btn, _ = st.columns([1, 2, 2, 1])
+    with reaudit_btn:
+        if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True):
+            for key in ["audit_done", "is_auditing", "_audit_result", "show_upload"]:
+                st.session_state.pop(key, None)
+            st.rerun()
     with reset_btn:
         if st.button("RESET / NEW UPLOAD", use_container_width=True):
-            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel"]:
+            for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name"]:
                 st.session_state.pop(key, None)
             st.rerun()

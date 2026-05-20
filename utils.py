@@ -438,83 +438,126 @@ def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, 
 
 # ─── EXCEL GENERATION ENGINE [IN TEST] ────────────────────────────────────────
 
-def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
+def _build_extraction_prompt(extra_instruction: str = "", reference_csv: str = "") -> str:
+    """Builds the main extraction prompt for PDF → JSON conversion."""
+    
+    reference_section = ""
+    if reference_csv:
+        # Show only the first ~30 rows of the reference CSV to save tokens
+        csv_lines = reference_csv.strip().splitlines()
+        preview_lines = csv_lines[:31]  # header + up to 30 data rows
+        reference_section = f"""
+REFERENCE EXCEL (EXISTING DATA — USE AS FORMAT EXAMPLE):
+Below is the existing Excel file for this hotel, converted to CSV.
+Use it to:
+  1. Understand the exact format expected for each column (dates, HTML structure, etc.)
+  2. Infer how many rows a contract of this size should produce.
+  3. Match your output style to what is shown below.
+
+{chr(10).join(preview_lines)}
+--- END OF REFERENCE ---
+"""
+
+    return f"""
+ACT AS: Senior Hotel Data Specialist.
+TASK: Extract EVERY rate season, room type, and promotion from the attached PDF into a JSON list.
+
+{extra_instruction}
+{reference_section}
+ROW GENERATION RULE:
+- Each row = ONE unique combination of [Room Type] + [Season/Period] + [Rate Type (Main/Promo/Early Bird)]
+- A single-room promotion contract may have only 1 row — that is valid.
+- A main contract with multiple room types and seasons MUST produce one row per combination.
+- DO NOT merge multiple rooms into one row. DO NOT merge multiple seasons into one row.
+- Count the room types and seasons from the PDF, then verify your row count matches before outputting.
+
+COLUMN RULES & FORMATTING:
+1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000".
+2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
+3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
+4. HTML FORMATTING REQUIRED (STRICT TEMPLATES):
+
+[cancellation_policy Template]
+<p><strong>CANCELLATION : [SEASON NAME OR PERIOD]</strong></p>
+<p>• Cancellation made [policy]</p>
+<p>• <span style="color: #ff0000;">NO-SHOW/Early Check Out</span> : [policy]</p>
+<p><span style="color: #ff0000;">*Remark : [details]</span></p>
+
+[child_policy Template]
+<p><span style="color: #008000;"><strong>Room rate includes ABF for [xx] persons</strong></span></p>
+<p><span style="color: #008000;"><strong>Maximum Occupancy : [XA / XA+XC]</strong></span></p>
+<p>[policy]</p>
+<p>in case have 2 Children;</p>
+<p>if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;</p>
+<p>1st child [policy]</p>
+<p>2nd child [policy]</p>
+<p>Adult [policy]</p>
+<p><span style="color: #ff0000;"><strong>*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</strong></span></p>
+
+[meals_and_info Template]
+<p><strong>MAIN CONTRACT [Year] : [Period]</strong></p>
+<br/>
+<p><span style="color: #ffcc00;"><strong>[ (only for Peak)</strong></span></p>
+<p><strong>MIN. [XX] NIGHTS during [xx-xx]</strong></p>
+<p><strong>NOT ALLOWED CHECK OUT on [xx]</strong></p>
+<p><strong>※ Compulsory [Event Name] on [Date]</strong></p>
+<p>Adult = [xxx] THB / Child ([age]) = [xxx] THB</p>
+<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+<p><span style="color: #ffcc00;"><strong>]</strong></span></p>
+<br/>
+<p><strong>※ MEAL RATES</strong></p>
+<p>Half Board (Lunch OR Dinner)</p>
+<p>Full Board (Lunch AND Dinner)</p>
+<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+<br/>
+<p><strong>※ Early Bird</strong></p>
+<p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
+<p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
+<p>• E.B [xx] Days, get [xx]% discount.</p>
+<p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
+<br/>
+<p><strong>※ Long Stay Offer / Minimum Nights Stay Offer</strong></p>
+<p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
+<p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
+<p>• <span style="color: #008000;"><strong>#MIN. [X] NIGHTS</strong></span>, get [xx]% discount</p>
+<br/>
+<p><strong>※ Honeymooner / Anniversary</strong></p>
+
+5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0).
+6. PERIOD SPLITTING: Split into separate rows if conditions change within the season.
+7. MISSING DATA: For any key not found, output "". DO NOT output 0 or FALSE.
+
+OUTPUT FORMAT: A pure JSON LIST of objects with REQUIRED KEYS: {json.dumps(EXCEL_UPLOAD_COLUMNS[6:])}
+CRITICAL: Return ONLY valid JSON — no markdown, no backticks, no explanation text.
+"""
+
+
+def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes = None):
     """
-    DIAGNOSTIC & STREAMING: Uses streaming (like Audit) to bypass 404s and lists models on failure.
+    Extracts every room/season/promotion combination from the PDF into a JSON list.
+    If excel_bytes is provided, uses the existing Excel as a format reference and
+    derives a dynamic row count threshold from the actual data (no hardcoded minimum).
     """
     client = _get_client(api_key)
-    
-    contents = [
-        types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-        f"""
-        ACT AS: Senior Hotel Data Specialist.
-        TASK: Extract EVERY rate season, room type, promotion, and policy from the attached PDF into structured data.
-        
-        COLUMN RULES & FORMATTING (MIMIC EXAMPLE STRUCTURE EXACTLY):
-        1. start_date / end_date: MUST use format "YYYY-MM-DD 00:00:00.000".
-        2. contract_type: Exactly one of: 'Main Contract', 'Promotion', 'Early Bird', 'POR'.
-        3. net_price: The contract rate (Number only). DO NOT add compulsory dinner/gala prices here.
-        4. HTML FORMATTING REQUIRED (STRICT TEMPLATES): You MUST format cancellation_policy, child_policy, and meals_and_info using these EXACT HTML templates and colors:
-        
-        [cancellation_policy Template]
-        <p><strong>CANCELLATION : [SEASON NAME OR PERIOD]</strong></p>
-        <p>• Cancellation made [policy]</p>
-        <p>• <span style="color: #ff0000;">NO-SHOW/Early Check Out</span> : [policy]</p>
-        <p><span style="color: #ff0000;">*Remark : [details]</span></p>
-        
-        [child_policy Template]
-        <p><span style="color: #008000;"><strong>Room rate includes ABF for [xx] persons</strong></span></p>
-        <p><span style="color: #008000;"><strong>Maximum Occupancy : [XA / XA+XC]</strong></span></p>
-        <p>[policy]</p>
-        <p>in case have 2 Children;</p>
-        <p>if have 2 children (xx-xx.99 years old) stay in room, subject to charge as policy below;</p>
-        <p>1st child [policy]</p>
-        <p>2nd child [policy]</p>
-        <p>Adult [policy]</p>
-        <p><span style="color: #ff0000;"><strong>*Maximum [X] Extra bed / *CANNOT ADD EXTRA BED*</strong></span></p>
-        
-        [meals_and_info Template]
-        <p><strong>MAIN CONTRACT [Year] : [Period]</strong></p>
-        <br/>
-        <p><span style="color: #ffcc00;"><strong>[ (only for Peak)</strong></span></p>
-        <p><strong>MIN. [XX] NIGHTS during [xx-xx]</strong></p>
-        <p><strong>NOT ALLOWED CHECK OUT on [xx]</strong></p>
-        <p><strong>※ Compulsory [Event Name] on [Date]</strong></p>
-        <p>Adult = [xxx] THB / Child ([age]) = [xxx] THB</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <p><span style="color: #ffcc00;"><strong>]</strong></span></p>
-        <br/>
-        <p><strong>※ MEAL RATES</strong></p>
-        <p>Half Board (Lunch OR Dinner)</p>
-        <p>Full Board (Lunch AND Dinner)</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <br/>
-        <p><strong>※ Early Bird</strong></p>
-        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-        <p>• E.B [xx] Days, get [xx]% discount.</p>
-        <p><span style="color: #ff0000;"><strong>*Remark : [details]</strong></span></p>
-        <br/>
-        <p><strong>※ Long Stay Offer / Minimum Nights Stay Offer</strong></p>
-        <p><span style="color: #0000ff;"><strong>Validity : [Period]</strong></span></p>
-        <p><span style="color: #ff0000;"><strong>*Black Out : [Period]</strong></span></p>
-        <p>• <span style="color: #008000;"><strong>#MIN. [X] NIGHTS</strong></span>, get [xx]% discount</p>
-        <br/>
-        <p><strong>※ Honeymooner / Anniversary</strong></p>
-        
-        5. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Extract numbers correctly (e.g. 1400.0 or 3250). 
-        6. PERIOD SPLITTING LOGIC: Split the period into separate rows if conditions change within the season.
-        8. MULTI-ROW EXTRACTION (CRITICAL): You MUST extract EVERY SINGLE combination of room type and rate season (Low, High, Peak, etc.). A standard contract has multiple seasons and multiple rooms. You must output a JSON list with MANY objects (e.g., 20-50 objects), NOT just one. Do not summarize.
-        9. MISSING DATA: For any requested key that you don't find, output "". DO NOT output 0 or FALSE.
-        
-        OUTPUT FORMAT: A JSON LIST of objects.
-        REQUIRED KEYS (Columns G to AP only): {json.dumps(EXCEL_UPLOAD_COLUMNS[6:])}
-        CRITICAL: Return ONLY a valid JSON list. Do not include any markdown formatting, backticks, or conversational text.
-        """
-    ]
-    
-    last_error = "Unknown Error"
-    # Use the same unique models logic as Audit
+
+    # ── Parse existing Excel for reference context (if available) ─────────────
+    reference_csv = ""
+    expected_rows = None  # None = unknown; skip validation
+    if excel_bytes:
+        try:
+            ref_df = pd.read_excel(io.BytesIO(excel_bytes), header=0, sheet_name=0)
+            ref_df = ref_df.dropna(how='all')
+            expected_rows = max(1, len(ref_df))  # at least 1 (valid for promo-only)
+            # Build a lean CSV preview (drop HTML-heavy cols to save tokens)
+            lean_cols = [c for c in ref_df.columns if c not in [
+                'cancellation_policy', 'cancellation_policy_net',
+                'child_policy', 'meals_and_info'
+            ]]
+            reference_csv = ref_df[lean_cols].head(30).to_csv(index=False)
+        except Exception:
+            pass  # If Excel can't be read, proceed without reference
+
+    # ── Build model list ───────────────────────────────────────────────────────
     available_models_list = []
     try:
         best_model, all_models = detect_available_model(api_key)
@@ -525,45 +568,81 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str):
             if m not in seen:
                 seen.add(m)
                 available_models_list.append(m)
-    except:
+    except Exception:
         available_models_list = _FALLBACK_MODELS
+
+    # ── Config: no response_mime_type so the model doesn't suppress repeated rows ──
+    config = types.GenerateContentConfig(
+        temperature=0.1,
+        max_output_tokens=65536,
+    )
+
+    def _call_model(model_name: str, extra_instruction: str = "") -> tuple:
+        """Returns (data_list, error_string). data_list is [] on failure."""
+        prompt_text = _build_extraction_prompt(extra_instruction, reference_csv)
+        contents = [
+            types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+            prompt_text,
+        ]
+        full_text = ""
+        for chunk in client.models.generate_content_stream(
+            model=model_name,
+            contents=contents,
+            config=config,
+        ):
+            if chunk.text:
+                full_text += chunk.text
+
+        if not full_text:
+            return [], "Empty response from model"
+
+        # Robust JSON extraction: find outermost [ ... ] bracket pair
+        json_start = full_text.find('[')
+        json_end   = full_text.rfind(']')
+        if json_start != -1 and json_end != -1 and json_end > json_start:
+            clean_json = full_text[json_start:json_end + 1].strip()
+        else:
+            clean_json = full_text.strip().replace('```json', '').replace('```', '').strip()
+
+        parsed = json.loads(clean_json)   # raises on invalid JSON
+        return parsed, None
+
+    last_error = "Unknown Error"
 
     for model_name in available_models_list:
         try:
-            # Enforce Strict JSON Mode for perfect table extraction
-            config = types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json",
-                max_output_tokens=32768,  # JSON output rarely exceeds 20K tokens
-            )
-            full_text = ""
-            for chunk in client.models.generate_content_stream(
-                model=model_name, 
-                contents=contents,
-                config=config
-            ):
-                if chunk.text:
-                    full_text += chunk.text
-            
-            if not full_text:
+            # ── First attempt ─────────────────────────────────────────────────
+            data, err = _call_model(model_name)
+            if err:
+                last_error = f"{model_name}: {err}"
                 continue
 
-            # Robust JSON extraction: find outermost [ ... ] by position
-            json_start = full_text.find('[')
-            json_end   = full_text.rfind(']')
-            if json_start != -1 and json_end != -1 and json_end > json_start:
-                clean_json = full_text[json_start:json_end + 1].strip()
-            else:
-                clean_json = full_text.strip().replace('```json', '').replace('```', '').strip()
-            return json.loads(clean_json), None
-            
+            # ── Row count validation (only when we have a reference) ─────────
+            # If expected_rows is known and AI returned significantly fewer, retry once.
+            # A 50% tolerance allows for legitimate differences (e.g., only Main Contract,
+            # no promos). A single-row promo contract is always accepted as-is.
+            if expected_rows is not None and expected_rows > 1:
+                threshold = max(1, int(expected_rows * 0.5))
+                if len(data) < threshold:
+                    escalation = (
+                        f"⚠️ PREVIOUS ATTEMPT WARNING: You only generated {len(data)} rows, "
+                        f"but the existing Excel for this hotel has {expected_rows} rows. "
+                        f"Go through the PDF again and extract EVERY room type × season × rate type combination. "
+                        f"Match the scale of the reference data shown above."
+                    )
+                    data_retry, err_retry = _call_model(model_name, escalation)
+                    if not err_retry and len(data_retry) > len(data):
+                        data = data_retry
+
+            return data, None
+
         except Exception as e:
-            err = str(e)
-            last_error = f"Model {model_name} failed: {err}"
-            if "429" in err:
-                time.sleep(1) # Small pause
+            err_str = str(e)
+            last_error = f"Model {model_name} failed: {err_str}"
+            if "429" in err_str:
+                time.sleep(1)
             continue
-            
+
     return [], f"All models exhausted. Last error: {last_error}"
 
 def create_upload_excel(data_list: list):
