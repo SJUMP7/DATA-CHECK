@@ -209,8 +209,12 @@ def load_css():
     div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"],
     div[data-testid="stSidebar"] div[role="radiogroup"] .st-bs,
     div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child:empty,
-    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
+    div[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child {
         display: none !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
     }
     div[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
         padding-left: 0 !important;
@@ -827,34 +831,26 @@ def load_css():
     }
 
     /* Transparent click wrappers for selector items */
-        position: fixed;
-        width: 276px;
-        height: 60px;
-        z-index: 999997;
+    div[data-testid="stVerticalBlock"]:has(.popup-da-btn-wrapper) {
+        position: fixed; top: 156px; left: 36px; width: 276px; height: 60px; z-index: 999997;
     }
-    .click-item-wrapper button {
-        background: transparent !important;
-        border: none !important;
-        width: 100% !important;
-        height: 100% !important;
-        opacity: 0 !important;
-        cursor: pointer !important;
+    div[data-testid="stVerticalBlock"]:has(.popup-da-btn-wrapper) div.stButton button {
+        opacity: 0 !important; background: transparent !important; border: none !important; height: 60px !important; cursor: pointer !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.popup-cc-btn-wrapper) {
+        position: fixed; top: 224px; left: 36px; width: 276px; height: 60px; z-index: 999997;
+    }
+    div[data-testid="stVerticalBlock"]:has(.popup-cc-btn-wrapper) div.stButton button {
+        opacity: 0 !important; background: transparent !important; border: none !important; height: 60px !important; cursor: pointer !important;
     }
 
     /* Overlay Backdrop wrapper */
-    .close-overlay-wrapper {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        z-index: 999990;
+    div[data-testid="stVerticalBlock"]:has(.close-overlay-wrapper) {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999990;
     }
-    .close-overlay-wrapper button {
-        background: transparent !important;
-        border: none !important;
-        width: 100% !important;
-        height: 100% !important;
-        opacity: 0 !important;
-        cursor: pointer !important;
+    div[data-testid="stVerticalBlock"]:has(.close-overlay-wrapper) div.stButton button {
+        opacity: 0 !important; background: transparent !important; border: none !important; width: 100vw !important; height: 100vh !important; cursor: pointer !important;
     }
     </style>
     """, unsafe_allow_html=True)
