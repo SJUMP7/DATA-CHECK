@@ -789,7 +789,7 @@ if selected_page == "AI EXCEL GENERATOR":
     st.stop()
 
 # ─── Upload Area ───────────────────────────────────────────────────────────────
-_audit_done = st.session_state.get("audit_done", False)
+_audit_done = st.session_state.get("audit_done", False) and bool(st.session_state.get("_audit_result"))
 _is_auditing = st.session_state.get("is_auditing", False)
 
 # Render clean action buttons in top-right when audit is done
