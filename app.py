@@ -437,9 +437,9 @@ def load_css():
     .app-selector-header-container { background: #f8fafc !important; border: 1px solid #f1f5f9 !important; border-radius: 12px; padding: 11px 14px; margin-top: 28px; margin-bottom: 20px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
     .app-selector-header-container:hover { background: #f1f5f9 !important; border-color: #e2e8f0 !important; }
     .app-selector-header { display: flex; align-items: center; gap: 10px; width: 100%; }
-    .app-selector-header .logo-circle { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 12px; color: #ffffff !important; flex-shrink: 0; }
-    .da-logo { background: linear-gradient(135deg, #4f46e5, #818cf8) !important; }
-    .cc-logo { background: linear-gradient(135deg, #7c3aed, #818cf8) !important; }
+    .logo-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 12px; color: #ffffff !important; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.08) !important; }
+    .da-logo { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; }
+    .cc-logo { background: linear-gradient(135deg, #6366f1, #818cf8) !important; }
     .app-selector-header .text-block { flex-grow: 1; text-align: left; line-height: 1.2; }
     .app-selector-header .main-title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--text-color) !important; }
     .app-selector-header .sub-title { font-size: 10px; color: #94a3b8 !important; font-weight: 500; margin-top: 1px; }
@@ -688,6 +688,7 @@ with st.sidebar:
     selected_page = st.session_state.selected_page
     
     saved_key = load_key()
+    api_key = saved_key
 
     @st.dialog("Settings")
     def settings_dialog():
