@@ -182,34 +182,7 @@ def load_css():
         padding: 1.25rem 0.75rem !important;
     }
 
-    /* ── Nav Buttons (replaces broken Radio) ──────────────────── */
-    .nav-label {
-        font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-        text-transform: uppercase; color: #cbd5e1;
-        padding: 0 4px; margin-bottom: 4px; margin-top: 4px;
-    }
-    .nav-btn-wrap div.stButton > button {
-        display: flex !important; align-items: center !important;
-        gap: 8px !important; padding: 9px 12px !important;
-        border-radius: 10px !important; font-size: 13px !important;
-        font-weight: 500 !important; color: #94a3b8 !important;
-        background: transparent !important; border: none !important;
-        width: 100% !important; text-align: left !important;
-        justify-content: flex-start !important; transition: all 0.15s !important;
-        letter-spacing: -0.01em !important; box-shadow: none !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-    }
-    .nav-btn-wrap div.stButton > button:hover {
-        background: #f8fafc !important; color: #334155 !important; transform: none !important;
-    }
-    .nav-btn-active div.stButton > button {
-        background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
-        color: #4f46e5 !important; font-weight: 600 !important;
-    }
-    .nav-btn-active div.stButton > button:hover {
-        background: linear-gradient(135deg, #e0e7ff, #c7d2fe) !important;
-        color: #4338ca !important;
-    }
+    /* (Removed old nav-btn styles that caused HTML unclosed tag bugs) */
 
     /* ── Sidebar Download Buttons ──────────────────────────────── */
     section[data-testid="stSidebar"] .stDownloadButton button {
@@ -250,8 +223,8 @@ def load_css():
     }
     div[data-testid="stFileUploader"] small { display: none !important; }
 
-    /* ── Primary Button ────────────────────────────────────────── */
-    button[kind="primary"] {
+    /* ── Primary Button (Main Area) ── */
+    [data-testid="stMainBlockContainer"] button[kind="primary"] {
         background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
         color: #fff !important; border: none !important; border-radius: 10px !important;
         font-size: 13px !important; font-weight: 700 !important; padding: 11px 26px !important;
@@ -259,11 +232,11 @@ def load_css():
         transition: all 0.15s !important; letter-spacing: -0.01em !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
-    button[kind="primary"]:hover {
+    [data-testid="stMainBlockContainer"] button[kind="primary"]:hover {
         filter: brightness(1.08) !important; transform: translateY(-1px) !important;
         box-shadow: 0 6px 20px rgba(79,70,229,0.35) !important;
     }
-    button[kind="primary"]:disabled {
+    [data-testid="stMainBlockContainer"] button[kind="primary"]:disabled {
         background: #e2e8f0 !important; color: #94a3b8 !important;
         box-shadow: none !important; transform: none !important; border: 1px solid #f1f5f9 !important;
     }
@@ -273,7 +246,62 @@ def load_css():
         font-size: 12px !important; font-weight: 500 !important;
         transition: all 0.15s !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
-    button[data-testid="baseButton-secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
+    button[kind="secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
+
+    /* ── Sidebar Navigation Buttons ── */
+    section[data-testid="stSidebar"] button[kind="primary"],
+    section[data-testid="stSidebar"] button[kind="secondary"] {
+        width: 100% !important; text-align: left !important;
+        justify-content: flex-start !important; padding: 10px 14px !important;
+        border-radius: 10px !important; font-size: 13px !important; font-weight: 600 !important;
+        border: none !important; box-shadow: none !important; margin-bottom: 4px !important;
+        transition: all 0.15s ease !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+    section[data-testid="stSidebar"] button[kind="primary"] {
+        background: rgba(79,70,229,0.08) !important;
+        color: #4f46e5 !important;
+    }
+    section[data-testid="stSidebar"] button[kind="secondary"] {
+        background: transparent !important;
+        color: #64748b !important; font-weight: 500 !important;
+    }
+    section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+        background: #f8fafc !important; color: #334155 !important;
+    }
+
+    /* ── Settings Profile Area ── */
+    .profile-card {
+        display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+        background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px;
+        margin-top: 24px; transition: all 0.2s; cursor: pointer;
+    }
+    .profile-card:hover { background: #f1f5f9; border-color: #e2e8f0; }
+    .profile-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, #4f46e5, #818cf8);
+        color: #fff; font-weight: 800; font-size: 14px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .profile-info { flex-grow: 1; text-align: left; line-height: 1.2; }
+    .profile-name { font-size: 13px; font-weight: 700; color: #1e293b; }
+    .profile-role { font-size: 11px; color: #94a3b8; font-weight: 500; }
+    .settings-link {
+        display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+        color: #64748b; padding: 8px 12px; cursor: pointer; border-radius: 8px;
+        transition: all 0.15s; margin-top: 32px;
+    }
+    .settings-link:hover { color: #334155; background: #f8fafc; }
+    .api-status {
+        display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+        padding: 4px 12px; margin-bottom: 8px;
+    }
+    .api-status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .api-connected { color: #10b981; }
+    .api-connected .api-status-dot { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+    .api-disconnected { color: #ef4444; }
+    .api-disconnected .api-status-dot { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+    .api-input-wrap { padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+
 
     /* ── Tags ──────────────────────────────────────────────────── */
     span[data-baseweb="tag"] {
@@ -648,39 +676,54 @@ with st.sidebar:
             st.session_state.selected_page = "CONTRACT COMPARE"
         
     for opt in page_options:
-        btn_class = "nav-btn-active" if st.session_state.selected_page == opt else "nav-btn-wrap"
-        
-        icon = "📄"
-        if opt == "AI EXCEL GENERATOR": icon = "⚡"
-        elif opt == "CONTRACT COMPARE": icon = "🔄"
+        # Match professional Material Icons to replace Emojis
+        mat_icon = ":material/document_scanner:" # Default (Contract Auditor)
+        if opt == "AI EXCEL GENERATOR": mat_icon = ":material/table_view:"
+        elif opt == "CONTRACT COMPARE": mat_icon = ":material/difference:"
             
-        st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
-        if st.button(f"{icon}  {opt}", key=f"nav_btn_{opt}", use_container_width=True):
+        is_active = (st.session_state.selected_page == opt)
+        btn_type = "primary" if is_active else "secondary"
+        
+        # Use native material icon instead of emoji
+        if st.button(opt, key=f"nav_btn_{opt}", use_container_width=True, type=btn_type, icon=mat_icon):
             st.session_state.selected_page = opt
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
         
     selected_page = st.session_state.selected_page
     
     st.markdown("<br>", unsafe_allow_html=True)
     saved_key = load_key()
 
-    with st.expander("CONNECTION SETTINGS", expanded=not saved_key):
-        if is_cloud_key():
-            api_key = saved_key
-            st.caption("API KEY: CONFIGURED VIA SECRETS")
-        else:
-            api_key = st.text_input("GEMINI API KEY", type="password", value=saved_key, placeholder="Enter API Key...", label_visibility="collapsed")
-            if api_key:
-                if api_key != saved_key:
-                    save_key(api_key)
-                ok, msg = validate_api_key(api_key)
-                if ok:
-                    st.caption(f"STATUS: {msg}")
-                else:
-                    st.error("INVALID API KEY")
-            else:
-                st.caption("API KEY REQUIRED FOR ANALYSIS")
+    # ─── Settings & Profile Area ───
+    st.markdown("""
+        <div class="settings-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+        </div>
+    """, unsafe_allow_html=True)
+    
+    api_key = saved_key
+    if is_cloud_key() or saved_key:
+        st.markdown('<div class="api-status api-connected"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
+        st.markdown('<div class="api-input-wrap">', unsafe_allow_html=True)
+        api_key_input = st.text_input("GEMINI API KEY", type="password", value="", placeholder="Enter API Key...", label_visibility="collapsed")
+        if api_key_input:
+            save_key(api_key_input)
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    st.markdown("""
+        <div class="profile-card">
+            <div class="profile-avatar">D</div>
+            <div class="profile-info">
+                <div class="profile-name">David</div>
+                <div class="profile-role">Admin</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+    """, unsafe_allow_html=True)
 
     # ─── Recent Comparison History (Sidebar) ───
     if active_app == "CONTRACT COMPARE":
