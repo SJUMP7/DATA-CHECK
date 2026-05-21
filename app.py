@@ -450,14 +450,14 @@ def load_css():
     div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] { margin-top: -96px !important; position: relative; z-index: 10; margin-bottom: 20px; }
     div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] button { background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; width: 100% !important; height: 80px !important; cursor: pointer !important; }
     /* 2. Popup Item DA */
-    div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 154px !important; left: 34px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+    div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 154px !important; left: 366px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
     /* 3. Popup Item CC */
-    div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 218px !important; left: 34px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+    div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 218px !important; left: 366px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
     /* 4. Backdrop Close */
     div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 999990 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
 
     /* ── Popup Card ────────────────────────────────────────────── */
-    .app-popup-card { position: fixed; top: 96px; left: 20px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .app-popup-card { position: fixed; top: 96px; left: 352px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     @keyframes popupSlideIn { 0% { opacity:0; transform:translateY(-10px) scale(0.96); } 100% { opacity:1; transform:translateY(0) scale(1); } }
     .popup-header { display: flex; align-items: center; gap: 9px; padding: 3px 5px 10px 5px; }
     .popup-header .building-icon { font-size: 15px; color: #4f46e5 !important; }
@@ -687,65 +687,37 @@ with st.sidebar:
         
     selected_page = st.session_state.selected_page
     
-    # Push settings to the absolute bottom using CSS flex spacer
-    st.markdown("""
-        <div class="marker-bottom-spacer"></div>
-        <style>
-        /* Hide default sidebar nav completely to prevent flex layout issues */
-        div[data-testid="stSidebarNav"] { display: none !important; }
-        /* Push the spacer container to take up remaining height */
-        div[data-testid="stElementContainer"]:has(.marker-bottom-spacer) { flex-grow: 1; min-height: 40px; }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    saved_key = load_key()
-
-    @st.dialog("Settings")
-    def settings_dialog():
-        st.markdown("""
-            <style>
-            div[data-testid="stDialog"] { border-radius: 16px !important; padding: 8px !important; }
-            div[data-testid="stDialog"] h2 { padding-bottom: 16px !important; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; }
-            div[data-testid="stDialog"] .stTextInput label { display: none !important; }
-            div[data-testid="stDialog"] .api-label { font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
-            div[data-testid="stDialog"] .caption-text { font-size: 12px; color: #94a3b8; margin-top: 4px; margin-bottom: 24px; font-weight: 500; }
-            div[data-testid="stDialog"] button[kind="primary"] { background: #6366f1 !important; color: white !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; border: none !important; font-weight: 600 !important; }
-            div[data-testid="stDialog"] button[kind="secondary"] { border: 1px solid #e2e8f0 !important; color: #64748b !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; font-weight: 600 !important; background: white !important; }
-            div[data-testid="stDialog"] button[kind="secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        st.markdown('<div class="api-label">GEMINI API KEY</div>', unsafe_allow_html=True)
-        api_key_input = st.text_input("GEMINI API KEY", type="password", value=load_key() or "", label_visibility="collapsed")
-        st.markdown('<div class="caption-text">Key ถูกเก็บใน environment variable — ไม่บันทึกลงไฟล์ใดๆ</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("บันทึก", type="primary", use_container_width=True):
-                if api_key_input: save_key(api_key_input)
-                st.rerun()
-        with col2:
-            if st.button("ยกเลิก", type="secondary", use_container_width=True):
-                st.rerun()
-
     # ─── Settings & Profile Area ───
     st.markdown("""
-        <div class="marker-settings-btn"></div>
         <style>
-        /* Force left alignment on the settings button so it perfectly matches the image */
+        /* Pin Settings to Bottom */
+        div[data-testid="stSidebarUserContent"] { position: relative !important; padding-bottom: 120px !important; }
+        div[data-testid="stVerticalBlock"]:has(> div > .marker-settings-bottom) {
+            position: absolute !important;
+            bottom: 20px !important;
+            left: 20px !important;
+            right: 20px !important;
+            width: auto !important;
+            z-index: 50;
+        }
+        /* Force left alignment on the settings button */
         div[data-testid="stElementContainer"]:has(.marker-settings-btn) + div[data-testid="stElementContainer"] button {
             margin-left: 0 !important; padding-left: 0 !important;
         }
         </style>
     """, unsafe_allow_html=True)
     
-    if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
-        settings_dialog()
-    
-    if is_cloud_key() or saved_key:
-        st.markdown('<div class="api-status api-connected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="api-status api-disconnected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="marker-settings-bottom"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="marker-settings-btn"></div>', unsafe_allow_html=True)
+        
+        if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
+            settings_dialog()
+        
+        if is_cloud_key() or saved_key:
+            st.markdown('<div class="api-status api-connected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="api-status api-disconnected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
 
     # ─── Recent Comparison History (Sidebar) ───
     if active_app == "CONTRACT COMPARE":
