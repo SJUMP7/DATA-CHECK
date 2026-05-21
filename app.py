@@ -445,13 +445,19 @@ def load_css():
     .app-selector-header .sub-title { font-size: 10px; color: #94a3b8 !important; font-weight: 500; margin-top: 1px; }
     .app-selector-header .chevron { font-size: 10px; color: #cbd5e1 !important; flex-shrink: 0; }
 
-    /* ── Toggle Button Overlay ─────────────────────────────────── */
-    .toggle-container { position: relative; margin-top: -72px; height: 56px; margin-bottom: 20px; z-index: 10; }
-    .toggle-container button { background: transparent !important; border: none !important; color: transparent !important; width: 100% !important; height: 56px !important; cursor: pointer !important; box-shadow: none !important; }
-    .toggle-container button:hover { background: transparent !important; color: transparent !important; }
+    /* ── Invisible Overlay Buttons via Sibling Selector ────────── */
+    /* 1. Header Toggle */
+    div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] { margin-top: -96px !important; position: relative; z-index: 10; margin-bottom: 20px; }
+    div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] button { background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; width: 100% !important; height: 80px !important; cursor: pointer !important; }
+    /* 2. Popup Item DA */
+    div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 154px !important; left: 34px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+    /* 3. Popup Item CC */
+    div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 218px !important; left: 34px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+    /* 4. Backdrop Close */
+    div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 999990 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
 
     /* ── Popup Card ────────────────────────────────────────────── */
-    .app-popup-card { position: absolute; top: 80px; left: 16px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .app-popup-card { position: fixed; top: 96px; left: 20px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     @keyframes popupSlideIn { 0% { opacity:0; transform:translateY(-10px) scale(0.96); } 100% { opacity:1; transform:translateY(0) scale(1); } }
     .popup-header { display: flex; align-items: center; gap: 9px; padding: 3px 5px 10px 5px; }
     .popup-header .building-icon { font-size: 15px; color: #4f46e5 !important; }
@@ -468,16 +474,6 @@ def load_css():
     .app-item-card .item-subtitle { font-size: 10.5px; color: #94a3b8 !important; }
     .app-item-card .active-badge { background: #4f46e5 !important; color: #ffffff !important; font-size: 8.5px !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 20px !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; flex-shrink: 0; }
 
-    /* ── Popup Click Overlays ──────────────────────────────────── */
-    .popup-btn-wrap { position: absolute; z-index: 999997; }
-    .popup-btn-wrap.da { top: 128px; left: 28px; width: 278px; height: 58px; }
-    .popup-btn-wrap.cc { top: 194px; left: 28px; width: 278px; height: 58px; }
-    .popup-btn-wrap button { background: transparent !important; border: none !important; color: transparent !important; width: 100% !important; height: 100% !important; cursor: pointer !important; box-shadow: none !important; }
-    .popup-btn-wrap button:hover { background: transparent !important; color: transparent !important; }
-    
-    .close-overlay-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 999990; }
-    .close-overlay-wrapper button { background: transparent !important; border: none !important; color: transparent !important; width: 100vw !important; height: 100dvh !important; cursor: pointer !important; box-shadow: none !important; }
-    .close-overlay-wrapper button:hover { background: transparent !important; color: transparent !important; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -582,11 +578,10 @@ with st.sidebar:
 
     # 1. Overlay Backdrop wrapper if open
     if st.session_state.get("app_selector_open", False):
-        st.markdown('<div class="close-overlay-wrapper">', unsafe_allow_html=True)
-        if st.button(" ", key="close_selector_overlay", use_container_width=True):
+        st.markdown('<div class="marker-close-bg"></div>', unsafe_allow_html=True)
+        if st.button("Close bg", key="close_selector_overlay", use_container_width=True):
             st.session_state.app_selector_open = False
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # 2. Launcher Header UI
     chevron_symbol = "▼"
@@ -604,11 +599,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # 3. Transparent Overlay Button for Launcher Header
-    st.markdown('<div class="toggle-container">', unsafe_allow_html=True)
-    if st.button(" ", key="toggle_selector_btn", use_container_width=True):
+    st.markdown('<div class="marker-toggle-app"></div>', unsafe_allow_html=True)
+    if st.button("Toggle App", key="toggle_selector_btn", use_container_width=True):
         st.session_state.app_selector_open = not st.session_state.app_selector_open
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # 4. Floating Popup Card Menu
     if st.session_state.get("app_selector_open", False):
@@ -650,19 +644,17 @@ with st.sidebar:
         st.markdown(html_str, unsafe_allow_html=True)
 
         # 5. Floating Popup Card Click Overlays
-        st.markdown('<div class="popup-btn-wrap da">', unsafe_allow_html=True)
-        if st.button(" ", key="select_da_app", use_container_width=True):
+        st.markdown('<div class="marker-popup-da"></div>', unsafe_allow_html=True)
+        if st.button("Select DA", key="select_da_app", use_container_width=True):
             st.session_state.active_app = "DATA AUDITOR"
             st.session_state.app_selector_open = False
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="popup-btn-wrap cc">', unsafe_allow_html=True)
-        if st.button(" ", key="select_cc_app", use_container_width=True):
+        st.markdown('<div class="marker-popup-cc"></div>', unsafe_allow_html=True)
+        if st.button("Select CC", key="select_cc_app", use_container_width=True):
             st.session_state.active_app = "CONTRACT COMPARE"
             st.session_state.app_selector_open = False
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # ─── Navigation Button Page Routing ───
     st.markdown('<div class="nav-label">NAVIGATION</div>', unsafe_allow_html=True)
@@ -695,7 +687,17 @@ with st.sidebar:
         
     selected_page = st.session_state.selected_page
     
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True) # Move settings down
+    # Push settings to the absolute bottom using CSS flex spacer
+    st.markdown("""
+        <div class="marker-bottom-spacer"></div>
+        <style>
+        /* Hide default sidebar nav completely to prevent flex layout issues */
+        div[data-testid="stSidebarNav"] { display: none !important; }
+        /* Push the spacer container to take up remaining height */
+        div[data-testid="stElementContainer"]:has(.marker-bottom-spacer) { flex-grow: 1; min-height: 40px; }
+        </style>
+    """, unsafe_allow_html=True)
+    
     saved_key = load_key()
 
     @st.dialog("Settings")
@@ -727,13 +729,23 @@ with st.sidebar:
                 st.rerun()
 
     # ─── Settings & Profile Area ───
+    st.markdown("""
+        <div class="marker-settings-btn"></div>
+        <style>
+        /* Force left alignment on the settings button so it perfectly matches the image */
+        div[data-testid="stElementContainer"]:has(.marker-settings-btn) + div[data-testid="stElementContainer"] button {
+            margin-left: 0 !important; padding-left: 0 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
         settings_dialog()
     
     if is_cloud_key() or saved_key:
-        st.markdown('<div class="api-status api-connected"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
+        st.markdown('<div class="api-status api-connected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
+        st.markdown('<div class="api-status api-disconnected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
 
     # ─── Recent Comparison History (Sidebar) ───
     if active_app == "CONTRACT COMPARE":
