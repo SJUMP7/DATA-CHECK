@@ -714,7 +714,7 @@ with st.sidebar:
         if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
             settings_dialog()
         
-        if is_cloud_key() or saved_key:
+        if saved_key:
             st.markdown('<div class="api-status api-connected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="api-status api-disconnected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
