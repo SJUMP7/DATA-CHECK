@@ -68,9 +68,9 @@ if st.session_state.get("cancel_btn_trigger") or st.session_state.get("cancel_re
 if st.session_state.get("confirm_reset", False):
     st.markdown("""
         <div class="fixed-overlay"></div>
-        <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: color-mix(in srgb, var(--secondary-background-color) 95%, transparent) !important;">
+        <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 95%, transparent) !important;">
             <h3 style="color: #ef4444 !important;">ยืนยันการล้างข้อมูล</h3>
-            <p style="margin-bottom: 24px; color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+            <p style="margin-bottom: 24px; color: rgba(130, 130, 130, 0.6) !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -168,8 +168,8 @@ def load_css():
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: var(--background-color) !important;
         background-image: 
-            radial-gradient(at 0% 0%, color-mix(in srgb, #10b981 4%, transparent) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, color-mix(in srgb, #3b82f6 4%, transparent) 0px, transparent 50%) !important;
+            radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.04) 0px, transparent 50%) !important;
         color: var(--text-color) !important;
     }
     .block-container { padding: 2.5rem 3rem 4rem !important; max-width: 1400px !important; }
@@ -177,28 +177,28 @@ def load_css():
     /* Sidebar Custom Styling */
     section[data-testid="stSidebar"] {
         background-color: var(--secondary-background-color) !important;
-        border-right: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        border-right: 1px solid rgba(130, 130, 130, 0.08) !important;
     }
     section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
         padding: 2.5rem 1.5rem !important;
     }
 
     /* Sidebar premium navigation radio styles (Emoji-free) */
-    div[data-testid="stSidebar"] div[role="radiogroup"] {
+    [data-testid="stSidebar"] div[role="radiogroup"] {
         display: flex !important;
         flex-direction: column !important;
         gap: 10px !important;
         background-color: transparent !important;
         padding: 0 !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label {
+    [data-testid="stSidebar"] div[role="radiogroup"] label {
         display: flex !important;
         align-items: center !important;
-        background-color: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        background-color: rgba(130, 130, 130, 0.02) !important;
+        border: 1px solid rgba(130, 130, 130, 0.06) !important;
         border-radius: 8px !important;
         padding: 14px 18px !important;
-        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
+        color: rgba(130, 130, 130, 0.6) !important;
         font-size: 11px !important;
         font-weight: 700 !important;
         letter-spacing: 0.08em !important;
@@ -207,37 +207,35 @@ def load_css():
         cursor: pointer !important;
         margin: 0 0 4px 0 !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
-        border-color: color-mix(in srgb, var(--text-color) 12%, transparent) !important;
+    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background-color: rgba(130, 130, 130, 0.04) !important;
+        border-color: rgba(130, 130, 130, 0.12) !important;
         color: var(--text-color) !important;
         transform: translateY(-1px) !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-        background: linear-gradient(135deg, color-mix(in srgb, #10b981 8%, transparent), color-mix(in srgb, #3b82f6 8%, transparent)) !important;
-        border: 1px solid color-mix(in srgb, #3b82f6 40%, transparent) !important;
+    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08)) !important;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
         color: #3b82f6 !important;
-        box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 12%, transparent) !important;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.12) !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"],
-    div[data-testid="stSidebar"] div[role="radiogroup"] .st-bs,
-    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child:empty,
-    div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
-    div[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child {
+    [data-testid="stSidebar"] div[role="radiogroup"] label > div:first-of-type,
+    [data-testid="stSidebar"] div[role="radiogroup"] [data-testid="stRadioButtonCircle"],
+    [data-testid="stSidebar"] div[role="radiogroup"] .st-bs {
         display: none !important;
         opacity: 0 !important;
         width: 0 !important;
         height: 0 !important;
     }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+    [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
         padding-left: 0 !important;
         width: 100% !important;
     }
 
     /* Sidebar clean buttons */
     section[data-testid="stSidebar"] .stDownloadButton button {
-        background-color: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        background-color: rgba(130, 130, 130, 0.02) !important;
+        border: 1px solid rgba(130, 130, 130, 0.06) !important;
         color: var(--text-color) !important;
         border-radius: 8px !important;
         font-size: 11px !important;
@@ -250,23 +248,23 @@ def load_css():
         transition: all 0.2s ease !important;
     }
     section[data-testid="stSidebar"] .stDownloadButton button:hover {
-        background-color: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
-        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        background-color: rgba(130, 130, 130, 0.06) !important;
+        border-color: rgba(130, 130, 130, 0.15) !important;
         color: var(--text-color) !important;
     }
 
     /* Connection Settings Collapsible Expander in Sidebar */
     .stExpander {
-        background-color: color-mix(in srgb, var(--text-color) 1%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        background-color: rgba(130, 130, 130, 0.01) !important;
+        border: 1px solid rgba(130, 130, 130, 0.06) !important;
         border-radius: 8px !important;
         margin: 12px 0 !important;
         overflow: hidden !important;
         box-shadow: none !important;
     }
     .stExpander > details > summary {
-        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
-        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
+        background: rgba(130, 130, 130, 0.02) !important;
+        color: rgba(130, 130, 130, 0.6) !important;
         font-weight: 700 !important;
         font-size: 10px !important;
         letter-spacing: 0.08em !important;
@@ -276,7 +274,7 @@ def load_css():
     }
     .stExpander > details > summary:hover {
         color: var(--text-color) !important;
-        background: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
+        background: rgba(130, 130, 130, 0.04) !important;
     }
 
     /* Hero Typography */
@@ -294,8 +292,8 @@ def load_css():
 
     /* Upload Area & Cards */
     .unified-card {
-        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         border-radius: 12px !important;
         padding: 24px 28px !important;
         backdrop-filter: blur(12px) !important;
@@ -305,8 +303,8 @@ def load_css():
         margin-bottom: 16px;
     }
     .unified-card:hover { 
-        border-color: color-mix(in srgb, #3b82f6 25%, transparent) !important;
-        box-shadow: 0 12px 40px color-mix(in srgb, #3b82f6 8%, transparent) !important;
+        border-color: rgba(59, 130, 246, 0.25) !important;
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.08) !important;
         transform: translateY(-2px) !important;
     }
     .c-eye {
@@ -323,37 +321,37 @@ def load_css():
 
     div[data-testid="stFileUploader"] { width: 100% !important; }
     div[data-testid="stFileUploader"] > section {
-        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
-        border: 1px dashed color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        background: rgba(130, 130, 130, 0.02) !important;
+        border: 1px dashed rgba(130, 130, 130, 0.15) !important;
         border-radius: 8px !important;
         transition: all 0.25s ease !important;
     }
     div[data-testid="stFileUploader"] > section:hover {
         border-color: #3b82f6 !important;
-        background: color-mix(in srgb, #3b82f6 2%, transparent) !important;
+        background: rgba(59, 130, 246, 0.02) !important;
     }
     div[data-testid="stFileUploader"] small { display: none !important; }
 
     /* Gradient Divider */
     .divider {
         height: 1px; margin: 20px 0 40px;
-        background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-color) 6%, transparent), transparent);
+        background: linear-gradient(90deg, transparent, rgba(130, 130, 130, 0.06), transparent);
     }
 
     /* Primary Actions */
     button[kind="primary"] {
         background: linear-gradient(135deg, #10b981, #3b82f6) !important; color: #fff !important; border: none !important;
         border-radius: 8px !important; font-size: 13px !important; font-weight: 700 !important; padding: 12px 28px !important;
-        box-shadow: 0 4px 20px color-mix(in srgb, #3b82f6 20%, transparent) !important; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2) !important; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         letter-spacing: 0.08em !important; text-transform: uppercase !important;
     }
-    button[kind="primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px color-mix(in srgb, #3b82f6 30%, transparent) !important; filter: brightness(1.1) !important; }
-    button[kind="primary"]:disabled { background: color-mix(in srgb, var(--text-color) 4%, transparent) !important; color: color-mix(in srgb, var(--text-color) 30%, transparent) !important; box-shadow: none !important; transform: none !important; border: 1px solid color-mix(in srgb, var(--text-color) 5%, transparent) !important; }
+    button[kind="primary"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3) !important; filter: brightness(1.1) !important; }
+    button[kind="primary"]:disabled { background: rgba(130, 130, 130, 0.04) !important; color: rgba(130, 130, 130, 0.3) !important; box-shadow: none !important; transform: none !important; border: 1px solid rgba(130, 130, 130, 0.05) !important; }
 
     button[kind="secondary"] {
-        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        background: rgba(130, 130, 130, 0.02) !important;
         color: var(--text-color) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         border-radius: 8px !important;
         font-size: 11px !important;
         font-weight: 700 !important;
@@ -362,16 +360,16 @@ def load_css():
         transition: all 0.25s ease !important;
     }
     button[data-testid="baseButton-secondary"]:hover {
-        background: color-mix(in srgb, var(--text-color) 5%, transparent) !important;
-        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        background: rgba(130, 130, 130, 0.05) !important;
+        border-color: rgba(130, 130, 130, 0.15) !important;
         color: var(--text-color) !important;
     }
 
     /* Multiselect / Dropdown Overrides */
     span[data-baseweb="tag"] {
-        background-color: color-mix(in srgb, #3b82f6 10%, transparent) !important;
+        background-color: rgba(59, 130, 246, 0.1) !important;
         color: #3b82f6 !important;
-        border: 1px solid color-mix(in srgb, #3b82f6 25%, transparent) !important;
+        border: 1px solid rgba(59, 130, 246, 0.25) !important;
         border-radius: 4px !important;
         font-weight: 600 !important;
         letter-spacing: 0.02em;
@@ -382,16 +380,16 @@ def load_css():
         background-color: var(--background-color) !important;
     }
     li[role="option"]:hover, li[role="option"][aria-selected="false"]:hover {
-        background-color: color-mix(in srgb, var(--text-color) 4%, transparent) !important;
+        background-color: rgba(130, 130, 130, 0.04) !important;
         color: var(--text-color) !important;
     }
     li[role="option"][aria-selected="true"] {
-        background-color: color-mix(in srgb, #3b82f6 12%, transparent) !important;
+        background-color: rgba(59, 130, 246, 0.12) !important;
         color: #3b82f6 !important;
         font-weight: 700 !important;
     }
     ul[data-testid="stMultiSelectDropdown"] {
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         border-radius: 8px !important;
         background-color: var(--background-color) !important;
         box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
@@ -400,8 +398,8 @@ def load_css():
 
     /* Output Card & Tables */
     .output-card {
-        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important; 
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.06) !important; 
         border-radius: 16px; padding: 40px 36px; margin-top: 24px;
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
@@ -412,26 +410,26 @@ def load_css():
         font-family: 'Outfit', sans-serif !important;
         font-size: 16px; font-weight: 700; margin: 32px 0 16px;
         color: var(--text-color);
-        border-bottom: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent); padding-bottom: 10px;
+        border-bottom: 1px solid rgba(130, 130, 130, 0.08); padding-bottom: 10px;
         letter-spacing: 0.03em;
         text-transform: uppercase;
     }
     .output-card p, .output-card li {
-        font-size: 14px; color: color-mix(in srgb, var(--text-color) 85%, transparent); margin-bottom: 8px;
+        font-size: 14px; color: rgba(130, 130, 130, 0.85); margin-bottom: 8px;
     }
     
     /* Policy Details Dropdown */
     details {
-        background: color-mix(in srgb, var(--secondary-background-color) 40%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 40%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         border-radius: 8px !important;
         margin-top: 14px !important;
         overflow: hidden !important;
         transition: all 0.3s ease !important;
     }
     details[open] {
-        border-color: color-mix(in srgb, #3b82f6 30%, transparent) !important;
-        box-shadow: 0 4px 24px color-mix(in srgb, #3b82f6 8%, transparent) !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
+        box-shadow: 0 4px 24px rgba(59, 130, 246, 0.08) !important;
     }
     summary {
         padding: 14px 20px !important;
@@ -439,7 +437,7 @@ def load_css():
         font-weight: 700 !important;
         font-size: 12px !important;
         color: #3b82f6 !important;
-        background: color-mix(in srgb, #3b82f6 4%, transparent) !important;
+        background: rgba(59, 130, 246, 0.04) !important;
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
@@ -450,7 +448,7 @@ def load_css():
         letter-spacing: 0.05em !important;
         text-transform: uppercase !important;
     }
-    summary:hover { background: color-mix(in srgb, #3b82f6 8%, transparent) !important; }
+    summary:hover { background: rgba(59, 130, 246, 0.08) !important; }
     summary::-webkit-details-marker { display: none; }
     details > *:not(summary) {
         padding: 16px 20px 20px !important;
@@ -483,15 +481,15 @@ def load_css():
 
     /* Output sections inside Report */
     .output-section {
-        background: color-mix(in srgb, var(--background-color) 40%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 4%, transparent) !important;
+        background: var(--background-color) !important; background: color-mix(in srgb, var(--background-color) 40%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.04) !important;
         border-radius: 12px !important;
         padding: 24px !important;
         margin-bottom: 12px !important;
         line-height: 1.8;
     }
     .output-section h3 {
-        background: color-mix(in srgb, var(--text-color) 2%, transparent) !important;
+        background: rgba(130, 130, 130, 0.02) !important;
         border-left: 3px solid #3b82f6 !important;
         color: var(--text-color) !important;
         font-family: 'Outfit', sans-serif !important;
@@ -506,25 +504,25 @@ def load_css():
         display: block !important;
     }
     .output-section h3:first-child { margin-top: 0 !important; }
-    .output-section p { color: color-mix(in srgb, var(--text-color) 85%, transparent); margin: 8px 0; font-size: 14px; }
-    .output-section li { color: color-mix(in srgb, var(--text-color) 85%, transparent); margin: 6px 0; font-size: 14px; }
+    .output-section p { color: rgba(130, 130, 130, 0.85); margin: 8px 0; font-size: 14px; }
+    .output-section li { color: rgba(130, 130, 130, 0.85); margin: 6px 0; font-size: 14px; }
     .output-section table {
         width: 100% !important; border-collapse: collapse !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
-        background: color-mix(in srgb, var(--background-color) 60%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
+        background: var(--background-color) !important; background: color-mix(in srgb, var(--background-color) 60%, transparent) !important;
         border-radius: 8px !important; overflow: hidden !important; margin: 16px 0 !important;
     }
     .output-section th {
-        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important; color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
+        background: rgba(130, 130, 130, 0.03) !important; color: rgba(130, 130, 130, 0.6) !important;
         font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px;
-        padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        padding: 12px 16px; border-bottom: 1px solid rgba(130, 130, 130, 0.08) !important;
     }
     .output-section td {
-        padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        padding: 12px 16px; border-bottom: 1px solid rgba(130, 130, 130, 0.06) !important;
         vertical-align: top; color: var(--text-color); line-height: 1.65;
     }
     .output-section tr:last-child td { border-bottom: none; }
-    .output-section tr:nth-child(even) td { background: color-mix(in srgb, var(--text-color) 0.5%, transparent); }
+    .output-section tr:nth-child(even) td { background: var(--text-color) !important; background: rgba(130,130,130,0.01); }
     .output-section code {
         background: rgba(239, 68, 68, 0.05) !important; color: #ef4444 !important;
         padding: 2px 6px; border-radius: 4px;
@@ -534,8 +532,8 @@ def load_css():
 
     /* Score banner */
     .score-card {
-        background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 45%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.06) !important;
         border-top: 3px solid #3b82f6 !important;
         border-radius: 12px !important;
         padding: 20px 24px !important;
@@ -561,7 +559,7 @@ def load_css():
     [data-testid="stCodeBlock"] {
         background-color: var(--secondary-background-color) !important;
         border-radius: 8px !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         margin: 0 !important;
     }
     [data-testid="stCodeBlock"] code {
@@ -573,7 +571,7 @@ def load_css():
     /* Modal Overlay (z-index 99999) */
     .fixed-overlay {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: color-mix(in srgb, var(--background-color) 70%, transparent);
+        background: var(--background-color) !important; background: color-mix(in srgb, var(--background-color) 70%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         z-index: 999998;
@@ -582,10 +580,10 @@ def load_css():
     .fixed-modal {
         position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
         border-radius: 16px; padding: 48px; width: 500px; max-width: 90vw;
-        box-shadow: 0 40px 80px rgba(0,0,0,0.15), inset 0 1px 0 color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(130, 130, 130, 0.08) !important;
         text-align: center; z-index: 999999;
-        background: color-mix(in srgb, var(--secondary-background-color) 90%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 90%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         color: var(--text-color) !important;
         animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
@@ -594,13 +592,13 @@ def load_css():
         color: var(--text-color) !important; margin: 0 0 12px; font-weight: 700; font-size: 20px;
         letter-spacing: 0.03em; text-transform: uppercase;
     }
-    .fixed-modal p  { color: color-mix(in srgb, var(--text-color) 60%, transparent) !important; margin: 0; font-size: 13px; letter-spacing: 0.02em; }
+    .fixed-modal p  { color: rgba(130, 130, 130, 0.6) !important; margin: 0; font-size: 13px; letter-spacing: 0.02em; }
     .spinner-loader {
-        border: 2px solid color-mix(in srgb, var(--text-color) 5%, transparent); border-top: 2px solid #3b82f6; border-radius: 50%;
+        border: 2px solid rgba(130, 130, 130, 0.05); border-top: 2px solid #3b82f6; border-radius: 50%;
         width: 40px; height: 40px; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin: 0 auto 24px auto;
     }
     .progress-container {
-        width: 100%; height: 4px; background: color-mix(in srgb, var(--text-color) 5%, transparent); border-radius: 10px; margin: 24px 0 12px; overflow: hidden;
+        width: 100%; height: 4px; background: rgba(130, 130, 130, 0.05); border-radius: 10px; margin: 24px 0 12px; overflow: hidden;
     }
     .progress-fill {
         height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.4s cubic-bezier(0.1, 0.8, 0.1, 1);
@@ -658,8 +656,8 @@ def load_css():
 
     /* --- Corporate Sidebar Application Selector Styles --- */
     .app-selector-header-container {
-        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: rgba(130, 130, 130, 0.03) !important;
+        border: 1px solid rgba(130, 130, 130, 0.08) !important;
         border-radius: 12px;
         padding: 12px 16px;
         margin-bottom: 24px;
@@ -669,8 +667,8 @@ def load_css():
         z-index: 5;
     }
     .app-selector-header-container:hover {
-        background: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
-        border-color: color-mix(in srgb, var(--text-color) 15%, transparent) !important;
+        background: rgba(130, 130, 130, 0.06) !important;
+        border-color: rgba(130, 130, 130, 0.15) !important;
     }
     .app-selector-header {
         display: flex;
@@ -711,13 +709,13 @@ def load_css():
     }
     .app-selector-header .sub-title {
         font-size: 9.5px;
-        color: color-mix(in srgb, var(--text-color) 50%, transparent) !important;
+        color: rgba(130, 130, 130, 0.5) !important;
         font-weight: 500;
         margin-top: 2px;
     }
     .app-selector-header .chevron {
         font-size: 10px;
-        color: color-mix(in srgb, var(--text-color) 40%, transparent) !important;
+        color: rgba(130, 130, 130, 0.4) !important;
         flex-shrink: 0;
     }
 
@@ -744,18 +742,19 @@ def load_css():
         top: 96px; /* Positioned directly below the header container */
         left: 20px;
         width: 310px;
-        background: color-mix(in srgb, var(--secondary-background-color) 96%, transparent) !important;
-        border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent) !important;
+        background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 96%, transparent) !important;
+        border: 1px solid rgba(130, 130, 130, 0.12) !important;
         border-radius: 14px;
         padding: 16px;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35) !important;
         z-index: 999995;
         backdrop-filter: blur(20px) !important;
         -webkit-backdrop-filter: blur(20px) !important;
-        animation: popupSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0; /* Prevents initial flash */
+        animation: popupSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
     @keyframes popupSlideIn {
-        0% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+        0% { opacity: 0; transform: translateY(-12px) scale(0.95); }
         100% { opacity: 1; transform: translateY(0) scale(1); }
     }
 
@@ -783,12 +782,12 @@ def load_css():
     }
     .popup-header .subtitle {
         font-size: 11px;
-        color: color-mix(in srgb, var(--text-color) 60%, transparent) !important;
+        color: rgba(130, 130, 130, 0.6) !important;
     }
 
     .divider-line {
         height: 1px;
-        background: color-mix(in srgb, var(--text-color) 8%, transparent) !important;
+        background: rgba(130, 130, 130, 0.08) !important;
         margin: 0 0 10px 0;
     }
 
@@ -806,12 +805,12 @@ def load_css():
         position: relative;
     }
     .app-item-card:hover {
-        background: color-mix(in srgb, var(--text-color) 3%, transparent) !important;
-        border-color: color-mix(in srgb, var(--text-color) 6%, transparent) !important;
+        background: rgba(130, 130, 130, 0.03) !important;
+        border-color: rgba(130, 130, 130, 0.06) !important;
     }
     .app-item-card.active-item {
-        background: color-mix(in srgb, #3b82f6 8%, transparent) !important;
-        border-color: color-mix(in srgb, #3b82f6 25%, transparent) !important;
+        background: rgba(59, 130, 246, 0.08) !important;
+        border-color: rgba(59, 130, 246, 0.25) !important;
     }
     .app-item-card .item-text {
         flex-grow: 1;
@@ -829,7 +828,7 @@ def load_css():
     }
     .app-item-card .item-subtitle {
         font-size: 10.5px;
-        color: color-mix(in srgb, var(--text-color) 50%, transparent) !important;
+        color: rgba(130, 130, 130, 0.5) !important;
     }
     .app-item-card .active-badge {
         background: #4f46e5 !important;
@@ -1211,7 +1210,7 @@ if selected_page == "AI EXCEL GENERATOR":
 
     if not gen_ready:
         hint = "Upload PDF file to continue" if not has_pdf_gen else "Enter API Key in sidebar"
-        st.markdown(f"<p style='text-align:center;color:color-mix(in srgb, var(--text-color) 50%, transparent);font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center;color:rgba(130, 130, 130, 0.5);font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
         
     st.stop()
 
@@ -1645,7 +1644,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 # ─── Analysis Output ──────────────────────────────────────────────────────────
 if st.session_state.get("is_auditing"):
-    st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:color-mix(in srgb, var(--text-color) 60%, transparent);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb, var(--text-color) 12%, transparent)">AUDIT REPORT</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(130, 130, 130, 0.6);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
     
     report_placeholder = st.empty()
     modal_placeholder = st.empty()
@@ -1734,7 +1733,7 @@ if st.session_state.get("is_auditing"):
 if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"):
     saved_result = st.session_state.get("_audit_result", "")
     if saved_result:
-        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:color-mix(in srgb, var(--text-color) 60%, transparent);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb, var(--text-color) 12%, transparent)">AUDIT REPORT</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(130, 130, 130, 0.6);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
         # apply_badges is now a top-level function — accessible here directly
         
         def _show_saved_report(full_text):
@@ -1755,7 +1754,7 @@ if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"
                 <div style="background: linear-gradient(135deg, {color}15, {color}08); border: 2px solid {color}40; border-radius: 16px; padding: 28px 32px; margin: 24px 0; text-align: center;">
                     <div style="font-size: 52px; font-weight: 900; color: {color}; line-height: 1;">{score:.0f}%</div>
                     <div style="font-size: 13px; font-weight: 700; color: {color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Accuracy Score</div>
-                    {"<div style='font-size:14px;color:color-mix(in srgb, var(--text-color) 65%, transparent);margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
+                    {"<div style='font-size:14px;color:rgba(130, 130, 130, 0.65);margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
                 </div>""", unsafe_allow_html=True)
             
             processed = apply_badges(full_text)
