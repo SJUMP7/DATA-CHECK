@@ -293,7 +293,7 @@ def load_css():
     .settings-link:hover { color: #334155; background: #f8fafc; }
     .api-status {
         display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
-        padding: 4px 12px; margin-bottom: 8px;
+        padding: 4px 14px; margin-bottom: 8px;
     }
     .api-status-dot { width: 8px; height: 8px; border-radius: 50%; }
     .api-connected { color: #10b981; }
@@ -726,14 +726,15 @@ with st.sidebar:
         div[data-testid="stVerticalBlock"]:has(> div > .marker-settings-bottom) {
             position: absolute !important;
             bottom: 20px !important;
-            left: 20px !important;
-            right: 20px !important;
+            left: 0.75rem !important;
+            right: 0.75rem !important;
             width: auto !important;
             z-index: 50;
         }
-        /* Force left alignment on the settings button */
+        /* Force perfect left alignment on the settings button */
         div[data-testid="stElementContainer"]:has(.marker-settings-btn) + div[data-testid="stElementContainer"] button {
-            margin-left: 0 !important; padding-left: 0 !important;
+            justify-content: flex-start !important;
+            padding-left: 14px !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -746,9 +747,9 @@ with st.sidebar:
             settings_dialog()
         
         if saved_key:
-            st.markdown('<div class="api-status api-connected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
+            st.markdown('<div class="api-status api-connected"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="api-status api-disconnected" style="margin-left: 0; padding-left: 0;"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
+            st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
 
     # ─── Recent Comparison History (Sidebar) ───
     if active_app == "CONTRACT COMPARE":
@@ -813,6 +814,30 @@ elif selected_page == "CONTRACT COMPARE":
       <div class="sub">AI-Powered Contract Comparison & Revision Verification.</div>
     </div>
     <div class="divider"></div>
+    """, unsafe_allow_html=True)
+
+# ─── THEME OVERRIDE FOR DATA AUDITOR ──────────────────────────────────────────
+if selected_page in ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]:
+    st.markdown("""
+    <style>
+    /* Override indigo with sky blue theme */
+    .c-eye { color: #0ea5e9 !important; }
+    .c-ttl { border-left-color: #0ea5e9 !important; }
+    .h1 { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    [data-testid="stMainBlockContainer"] button[kind="primary"] { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; box-shadow: 0 4px 14px rgba(14,165,233,0.25) !important; }
+    [data-testid="stMainBlockContainer"] button[kind="primary"]:hover { box-shadow: 0 6px 20px rgba(14,165,233,0.35) !important; }
+    .score-number { color: #0ea5e9 !important; }
+    .score-card { border-top-color: #0ea5e9 !important; }
+    .output-section h3 { background: rgba(14,165,233,0.04) !important; border-left-color: #0ea5e9 !important; }
+    .spinner-loader { border-top-color: #0ea5e9 !important; }
+    .progress-fill { background: linear-gradient(90deg, #0ea5e9, #38bdf8) !important; }
+    .perc-text { color: #0ea5e9 !important; }
+    details[open] { border-color: rgba(14,165,233,0.22) !important; box-shadow: 0 4px 16px rgba(14,165,233,0.06) !important; }
+    summary { color: #0ea5e9 !important; background: rgba(14,165,233,0.03) !important; }
+    summary:hover { background: rgba(14,165,233,0.06) !important; }
+    .unified-card:hover { border-color: rgba(14,165,233,0.18) !important; box-shadow: 0 4px 16px rgba(14,165,233,0.06) !important; }
+    .divider { background: linear-gradient(90deg, transparent, rgba(14,165,233,0.1), transparent) !important; }
+    </style>
     """, unsafe_allow_html=True)
 
 # ─── PAGE ROUTING ──────────────────────────────────────────────────────────────
