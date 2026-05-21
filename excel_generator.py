@@ -158,7 +158,7 @@ def generate_comparison_excel(data: dict) -> bytes:
 
             amt_cell = _cell(ws, row, 5, diff_amt_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
             if isinstance(diff_amt_disp, float):
-                amt_cell.number_format = '+#,##0;-#,##0;0'
+                amt_cell.number_format = '#,##0;-#,##0;0'
                 if diff_amt > 0: amt_cell.font = Font(color="CC0000", bold=True, name="Calibri", size=10)
                 elif diff_amt < 0: amt_cell.font = Font(color="16A34A", bold=True, name="Calibri", size=10)
             

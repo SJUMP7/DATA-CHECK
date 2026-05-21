@@ -573,7 +573,7 @@ COLUMN RULES & FORMATTING:
    - If the contract PDF does NOT specify a "Book by" / "Booking period" end date, you MUST fallback to using the end_date of the stay validity period.
    - In Excel, set the promo_book_till column value to the Book by date formatted exactly as "YYYY-MM-DD 23:59:59" (using the stay end date as fallback if not specified).
    - In the meals_and_info HTML content under "Book by :", output the same date (e.g. "31 Oct 2027" or "YYYY-MM-DD").
-6. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0).
+6. Numeric columns (net_price, child_share_bed_abf, child_extra_bed_abf, extra_bed_abf): Numbers only (e.g. 1400.0). NEVER use a plus sign (+). If it is an extra charge of 500, output exactly 500 or 500.0.
 7. PERIOD SPLITTING: Split into separate rows if conditions change within the season.
 8. MISSING DATA: For any key not found, output "". DO NOT output 0 or FALSE.
 
