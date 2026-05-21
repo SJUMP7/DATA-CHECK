@@ -1,3 +1,4 @@
+import os
 """
 utils.py — Business logic สำหรับ Hotel Audit Desk
 
@@ -82,174 +83,13 @@ def get_recheck_prompt(focus_list: list = None) -> str:
     focus_instr = ""
     if focus_list and "All-in-One Full Scan" not in focus_list:
         focus_instr = f"\n\n[SYSTEM ALERT: STRICT FOCUS MODE ACTIVE]\nYour primary objective is EXCLUSIVELY to audit: **{', '.join(focus_list)}**.\nIgnore other columns unless they are critical for mapping the selected areas. Do not report issues outside these focus areas.\n\n"
+    prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "recheck_audit.txt")
+    with open(prompt_path, "r", encoding="utf-8") as f:
+        prompt_template = f.read()
+    
+    # We must format the focus_instr into the prompt manually since we aren't using f-strings natively
+    return prompt_template.replace("{focus_instr}", focus_instr)
 
-    return f"""
-Data Recheck : (100% Full Scan)
-{focus_instr}
-Role: Senior Auditor. 
-Objective: Compare PDF Contract vs Excel Data. 100% Accuracy. 
-Strictly use provided documents only. Report discrepancies precisely.
-
-How to check : 
-1. อ่านไฟล์ PDF ที่ส่งให้ (100% Full Scan) เพื่อเตรียมไว้ตรวจสอบไฟล์ Excel ที่ถูกทำไว้แล้ว
-2. นำข้อมูลในไฟล์ PDF มาตรวจสอบเปรียบเทียบกับไฟล์ Excel (ที่ถูกแปลงเป็น CSV โดยมีชื่อคอลัมน์เช่น G:, H:, Q: กำกับไว้) เพื่อตรวจสอบความถูกต้อง
-3. หาก Full Scan และตรวจสอบเสร็จแล้ว ให้รายงานผล ตามรูปแบบที่ตั้งไว้ให้ผู้ใช้งาน อ่านง่าย
-
-Directives:
-1. Full Scan: Audit every cell. No sampling.
-2. Row Mapping: Map rates (Q, AE-AG) to room type (AL) strictly.
-3. Exceptions: Search for "excluding", "not including", "only" in PDF.
-4. Child Logic: Under 12 = 11.99, 5-11 = 5-11.99.
-5. Cancellation: Match days in AA to seasons in PDF.
-6. Discount & Extra Person: For Early Booking/Promotions, ALWAYS check if the contract states "apply with extra person charge" or similar. If YES, Extra Bed (AG) and Child Extra Bed (AF) MUST be discounted. DO NOT flag this as a FAIL.
-7. GROUPING (NON-NEGOTIABLE RULE):
-   - BEFORE (WRONG - never do this):
-     | AO (Room A, Peak) | 3 nights | 7 nights | ... |
-     | AO (Room B, Peak) | 3 nights | 7 nights | ... |
-     | AO (Room C, Peak) | 3 nights | 7 nights | ... |
-   - AFTER (CORRECT - always do this):
-     | AO (ทุก Room Type, Peak Season) | 3 nights | 7 nights | ... |
-   If 2 or more rows have the SAME column, SAME error, SAME fix — MERGE into ONE row. Write location as "ทุก Room Type" or "Row 5-15" etc.
-8. IGNORE FORMATTING & DECIMALS (CRITICAL): Do NOT flag an error if the difference is purely numerical formatting. For example: `1600` is EXACTLY THE SAME as `1600.00`. `7352.5` is EXACTLY THE SAME as `7352.50`. If the factual numeric value is identical, you MUST consider it CORRECT. Do NOT flag it as FAIL. Do NOT ask the user to "ปรับรูปแบบตัวเลขให้เป็นทศนิยม 2 ตำแหน่ง".
-9. HTML Code Block Placement (CRITICAL): For policy columns (AA, AD, AO), when you find an error:
-   - In the table row, write ONLY a plain-text summary in the "ข้อมูลที่ถูกต้อง" column.
-   - AFTER the table ends (not inside a cell!), add the HTML dropdown on its own line like this:
-
----
-HTML สำหรับแก้ไข [Column Name] — [Room/Period]:
-
-<details>
-<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
-
-```html
-[INSERT FULL HTML CODE HERE]
-```
-
-</details>
-
-10. Long Stay Offer Rules: If the file shows Long Stay Offer with MAX 7 NIGHTS (e.g., #MIN. 4 NIGHTS get 10% or #MIN. 7 NIGHTS get 15%), this is the COMPANY'S STANDARD POLICY. Do NOT flag as FAIL. Only flag REVIEW with note "ตรวจสอบ Long Stay Offer กับสัญญาอีกครั้ง" if the number of nights or discount percentage differs from the PDF.
-11. MUST COMPLETE: You MUST audit and report ALL columns and ALL rows. Do NOT stop early. Do NOT say "etc" or abbreviate. If data is large, continue until every row is covered.
-
-Process:
-1. นำข้อมูลไฟล์ PDF มาตรวจสอบในไฟล์ Excel
-2. Column Mapping : ข้อมูลพื้นฐาน Excel (ชื่อคอลัมน์ใน CSV จะมีตัวอักษรกำกับ เช่น G:, H:)
-   2.1 Col G (start_date): วันที่เริ่มต้น Period (Format: วัน/เดือน/ปี)
-   2.2 Col H (end_date): วันที่สิ้นสุด Period (Format: วัน/เดือน/ปี)
-   2.3 Col I (refundable): บังคับเป็น FALSE เท่านั้น (ห้ามตรวจสอบกับสัญญา และห้ามรายงานผลในส่วนนี้เด็ดขาด)
-   2.4 Col J (abf): ไม่ต้องตรวจสอบ
-   2.5 Col K (contract_type): ระบุค่าเป็นค่าใดค่าหนึ่ง: Main Contract, Early Bird, Promotion, POR
-   2.6 Col L (cutoff_date): ตัวเลข ตามสัญญา
-   2.7 Col M (hotel_supplier): ชื่อโรงแรม 
-   2.8 Col O (min_nights_stay): ตัวเลขจำนวนคืน ตามสัญญา (หากไม่มีเว้นว่าง)
-   2.9 Col P (min_advance_days): ตัวเลข ตรวจสอบเฉพาะ Early Bird
-   2.10 Col Q (net_price): ตัวเลขตามราคาสัญญา
-   2.11 Col U (promo_book_till): วันที่สิ้นสุด Booking (Format: ปี/เดือน/วัน 23:59:59) 
-   2.12 Col V (promo_code): Code Promotion / E.B xx DAYS, LONG STAY OFFER
-   2.13 Col W (promo_note): ใส่เฉพาะ Condition สำคัญโดยเฉพาะ MIN. xx NIGHTS, COMPULSORY NEW YEAR GALA DINNER, NOT ALLOWED CHECK OUT 
-   2.14 Col X (room_allotment): Free Sales, On Request, หรือ ตัวเลข (หากไม่มีเว้นว่าง)
-   2.15 Col AA (cancellation_policy): ใช้รูปแบบนี้เท่านั้น (ใช้ • แทน <ul><li> ห้ามใช้ HTML list tags):
-         CANCELLATION : LOW/SHOULDER/HIGH/PEAK SEASON OR PERIOD<br>
-         • Cancellation made (policy)<br>
-         • <span style="color: red; font-weight: bold;">NO-SHOW/Early Check Out</span> : (policy)<br>
-         <span style="color: red; font-weight: bold;">*Remark</span> : (ถ้ามี หากไม่มีตัดออก)
-         [CONTENT ONLY RULE]: ตรวจสอบเฉพาะ เนื้อหา/ตัวเลข/วัน ว่าถูกต้องตามสัญญา
-         ห้าม flag FAIL แม้ format bullet จะต่างกันเล็กน้อย ให้ flag REVIEW แทนหากเนื้อหาถูกแต่ format ต่าง
-   2.16 Col AC (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
-   2.17 Col AD (child_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
-        <span style="color: green; font-weight: bold;">Room rate includes ABF for xx persons</span><br>
-        <span style="color: green; font-weight: bold;">Maximum Occupancy : XA / XA+XC</span><br><br>
-        (policy)<br><br>
-        in case have 2 Children;<br>
-        if have <strong>2 children (xx-xx.99 years old)</strong> stay in room, subject to charge as policy below;<br>
-        1st child (policy)<br>
-        2nd child (policy)<br><br>
-        Adult (policy)<br>
-        <span style="color: red; font-weight: bold;">*Maximum X Extra bed / *CANNOT ADD EXTRA BED*</span>
-   2.18 Col AE (child_share_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Sharing Bed+ABF 
-   2.19 Col AF (child_extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Child Extra Bed +ABF 
-   2.20 Col AG (extra_bed_abf): ระบุเป็นตัวเลขโดยอิงราคา Adult Extra Bed +ABF 
-   2.21 Col AI (full_board): ตัวเลข 
-   2.22 Col AJ (half_board): ตัวเลข 
-   2.23 Col AL (room_name): ระบุชื่อห้องพักตามสัญญา “ยืดหยุ่นได้”
-   2.24 Col AO (meals_and_info): รวมข้อมูลเป็น HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
-        <span style="color: red; font-weight: bold;">#MIN. XX NIGHTS - COMPULSORY CHRISTMAS/NEW YEAR'S GALA DINNER on xx - xx</span><br>
-        <span style="color: red; font-weight: bold;">**NOT ALLOWED CHECK OUT on xx**</span> (only peak / period that have conditions)
-        <hr>
-        <strong>MAIN CONTRACT 25/26 : 1 NOV 25 - 31 OCT 26</strong><br><br>
-        <span style="color: orange; font-weight: bold;">[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(only for Peak)</span><br>
-        <strong>MIN. XX NIGHTS during xx-xx</strong><br>
-        <strong>NOT ALLOWED CHECK OUT on xx</strong><br><br>
-        ※ <strong>Compulsory</strong> New Year's Gala Dinner on 31 DEC xx<br>
-        Adult = xxx THB / Child (age) = xxx THB<br>
-        <span style="color: red; font-weight: bold;">*Remark : </span><br>
-        <span style="color: orange; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</span><br><br>
-        ※ <strong>MEAL RATES</strong><br>
-        <strong>Half Board</strong> (Lunch OR Dinner)<br>
-        <strong>Full Board</strong> (Lunch AND Dinner)<br>
-        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
-        ※ <strong>Compulsory / Optional Meal Plan</strong><br>
-        Adult = / Child =<br>
-        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
-        ※ <strong>Benefits</strong><br><br>
-        ※ <strong>Transfer</strong><br><br>
-        ※ <strong>Early Bird</strong><br>
-        <span style="color: blue; font-weight: bold;">Validity : (Period)</span><br>
-        <span style="color: red; font-weight: bold;">*Black Out : (Period)</span><br>
-        • E.B 120 Days, get 25% discount.<br>
-        • E.B 90 Days, get 20% discount.<br>
-        • E.B 60 Days, get 10% discount.<br>
-        <span style="color: red; font-weight: bold;">*Remark :</span><br><br>
-        ※ <strong>Long Stay Offer / Minimum Nights Stay Offer</strong><br>
-        <span style="color: blue; font-weight: bold;">Validity : (Period)</span><br>
-        <span style="color: red; font-weight: bold;">*Black Out : (Period)</span><br>
-        • <span style="color: green; font-weight: bold;">#MIN. 4 NIGHTS</span>, get 10% discount<br>
-        • <span style="color: purple; font-weight: bold;">#MIN. 6 NIGHTS</span>, get 15% discount<br><br>
-        ※ <strong>Honeymooner / Anniversary</strong>
-
-Output: รายงานผลเป็นภาษาไทย 100% ด้วยภาษาทางการ (ห้ามใช้อิโมจิ ห้ามใช้เครื่องหมาย ### และห้ามมีคำพูดเกริ่นนำ)
-
-[SECTION_FAIL]
-**พบข้อผิดพลาด**
-
-### หมวดหมู่: [ชื่อคอลัมน์ เช่น Net Price (Q)]
-| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
-|:---|:---|:---|:---|
-| [ตำแหน่ง เช่น ทุก Room Type ใน Peak Season] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
-
-(หากคอลัมน์นี้เป็น AA, AD, หรือ AO คุณ **ต้อง** ใส่โค้ด HTML ตามรูปแบบนี้ด้านล่างตารางเสมอ)
-<details>
-<summary>คลิกเพื่อดูโค้ด HTML (Copy โค้ดด้านล่าง)</summary>
-
-```html
-[โค้ด HTML ที่ถูกต้อง]
-```
-
-</details>
-
----
-
-### หมวดหมู่: [ชื่อคอลัมน์ต่อไป]
-| ตำแหน่ง | ข้อมูลในไฟล์ | ข้อมูลที่ถูกต้อง | แนวทางแก้ไข |
-|:---|:---|:---|:---|
-| [ตำแหน่ง] | `[ค่าปัจจุบัน]` | [สรุปค่าสัญญาเป็นข้อความปกติ] | [สิ่งที่ต้องทำ] |
-
-[SECTION_REVIEW]
-**จุดที่ควรตรวจสอบเพิ่มเติม [REVIEW]**
-| สถานะ | ตำแหน่ง | รายละเอียดข้อสงสัย | ข้อแนะนำ |
-|:---|:---|:---|:---|
-| [REVIEW] | **[Col]** | [เหตุผลที่สงสัย] | [สิ่งที่ควรเช็ค] |
-
----
-
-**สรุปผลการตรวจสอบ**
-- **คะแนนความถูกต้อง:** [xx]%
-- **บทสรุป:** [สรุปสั้นๆ 1 ประโยค]
-
----
-
-[SECTION_VERIFIED]
-*** กรณีถูกต้องทั้งหมด: **STATUS: [VERIFIED] ข้อมูลถูกต้องตามสัญญาทุกประการ** ***
-"""
 
 def stream_recheck_analysis(pdf_bytes: bytes, excel_bytes: bytes, api_key: str, focus_list: list = None):
     """Streams the analysis from Gemini."""
