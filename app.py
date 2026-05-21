@@ -687,6 +687,36 @@ with st.sidebar:
         
     selected_page = st.session_state.selected_page
     
+    saved_key = load_key()
+
+    @st.dialog("Settings")
+    def settings_dialog():
+        st.markdown("""
+            <style>
+            div[data-testid="stDialog"] { border-radius: 16px !important; padding: 8px !important; }
+            div[data-testid="stDialog"] h2 { padding-bottom: 16px !important; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; }
+            div[data-testid="stDialog"] .stTextInput label { display: none !important; }
+            div[data-testid="stDialog"] .api-label { font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+            div[data-testid="stDialog"] .caption-text { font-size: 12px; color: #94a3b8; margin-top: 4px; margin-bottom: 24px; font-weight: 500; }
+            div[data-testid="stDialog"] button[kind="primary"] { background: #6366f1 !important; color: white !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; border: none !important; font-weight: 600 !important; }
+            div[data-testid="stDialog"] button[kind="secondary"] { border: 1px solid #e2e8f0 !important; color: #64748b !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; font-weight: 600 !important; background: white !important; }
+            div[data-testid="stDialog"] button[kind="secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="api-label">GEMINI API KEY</div>', unsafe_allow_html=True)
+        api_key_input = st.text_input("GEMINI API KEY", type="password", value=load_key() or "", label_visibility="collapsed")
+        st.markdown('<div class="caption-text">Key ถูกเก็บใน environment variable — ไม่บันทึกลงไฟล์ใดๆ</div>', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("บันทึก", type="primary", use_container_width=True):
+                if api_key_input: save_key(api_key_input)
+                st.rerun()
+        with col2:
+            if st.button("ยกเลิก", type="secondary", use_container_width=True):
+                st.rerun()
+
     # ─── Settings & Profile Area ───
     st.markdown("""
         <style>
