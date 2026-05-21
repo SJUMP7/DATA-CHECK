@@ -434,7 +434,7 @@ def load_css():
     .anim-delay-3 { animation-delay: 0.28s; }
 
     /* ── App Selector Sidebar Header ───────────────────────────── */
-    .app-selector-header-container { background: #f8fafc !important; border: 1px solid #f1f5f9 !important; border-radius: 12px; padding: 11px 14px; margin-bottom: 20px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
+    .app-selector-header-container { background: #f8fafc !important; border: 1px solid #f1f5f9 !important; border-radius: 12px; padding: 11px 14px; margin-top: 28px; margin-bottom: 20px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
     .app-selector-header-container:hover { background: #f1f5f9 !important; border-color: #e2e8f0 !important; }
     .app-selector-header { display: flex; align-items: center; gap: 10px; width: 100%; }
     .app-selector-header .logo-circle { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 12px; color: #ffffff !important; flex-shrink: 0; }
@@ -446,11 +446,12 @@ def load_css():
     .app-selector-header .chevron { font-size: 10px; color: #cbd5e1 !important; flex-shrink: 0; }
 
     /* ── Toggle Button Overlay ─────────────────────────────────── */
-    div[data-testid="stVerticalBlock"]:has(.toggle-btn-wrapper) { position: relative; margin-top: -72px; height: 56px; margin-bottom: 20px; z-index: 10; }
-    div[data-testid="stVerticalBlock"]:has(.toggle-btn-wrapper) div.stButton button { background: transparent !important; border: none !important; opacity: 0 !important; width: 100% !important; height: 56px !important; cursor: pointer !important; }
+    .toggle-container { position: relative; margin-top: -72px; height: 56px; margin-bottom: 20px; z-index: 10; }
+    .toggle-container button { background: transparent !important; border: none !important; color: transparent !important; width: 100% !important; height: 56px !important; cursor: pointer !important; box-shadow: none !important; }
+    .toggle-container button:hover { background: transparent !important; color: transparent !important; }
 
     /* ── Popup Card ────────────────────────────────────────────── */
-    .app-popup-card { position: fixed; top: 90px; left: 16px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .app-popup-card { position: absolute; top: 80px; left: 16px; width: 306px; background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     @keyframes popupSlideIn { 0% { opacity:0; transform:translateY(-10px) scale(0.96); } 100% { opacity:1; transform:translateY(0) scale(1); } }
     .popup-header { display: flex; align-items: center; gap: 9px; padding: 3px 5px 10px 5px; }
     .popup-header .building-icon { font-size: 15px; color: #4f46e5 !important; }
@@ -468,12 +469,15 @@ def load_css():
     .app-item-card .active-badge { background: #4f46e5 !important; color: #ffffff !important; font-size: 8.5px !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 20px !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; flex-shrink: 0; }
 
     /* ── Popup Click Overlays ──────────────────────────────────── */
-    div[data-testid="stVerticalBlock"]:has(.popup-da-btn-wrapper) { position: fixed; top: 148px; left: 28px; width: 278px; height: 58px; z-index: 999997; }
-    div[data-testid="stVerticalBlock"]:has(.popup-da-btn-wrapper) div.stButton button { opacity: 0 !important; background: transparent !important; border: none !important; height: 58px !important; cursor: pointer !important; }
-    div[data-testid="stVerticalBlock"]:has(.popup-cc-btn-wrapper) { position: fixed; top: 214px; left: 28px; width: 278px; height: 58px; z-index: 999997; }
-    div[data-testid="stVerticalBlock"]:has(.popup-cc-btn-wrapper) div.stButton button { opacity: 0 !important; background: transparent !important; border: none !important; height: 58px !important; cursor: pointer !important; }
-    div[data-testid="stVerticalBlock"]:has(.close-overlay-wrapper) { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 999990; }
-    div[data-testid="stVerticalBlock"]:has(.close-overlay-wrapper) div.stButton button { opacity: 0 !important; background: transparent !important; border: none !important; width: 100vw !important; height: 100dvh !important; cursor: pointer !important; }
+    .popup-btn-wrap { position: absolute; z-index: 999997; }
+    .popup-btn-wrap.da { top: 128px; left: 28px; width: 278px; height: 58px; }
+    .popup-btn-wrap.cc { top: 194px; left: 28px; width: 278px; height: 58px; }
+    .popup-btn-wrap button { background: transparent !important; border: none !important; color: transparent !important; width: 100% !important; height: 100% !important; cursor: pointer !important; box-shadow: none !important; }
+    .popup-btn-wrap button:hover { background: transparent !important; color: transparent !important; }
+    
+    .close-overlay-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 999990; }
+    .close-overlay-wrapper button { background: transparent !important; border: none !important; color: transparent !important; width: 100vw !important; height: 100dvh !important; cursor: pointer !important; box-shadow: none !important; }
+    .close-overlay-wrapper button:hover { background: transparent !important; color: transparent !important; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -578,11 +582,11 @@ with st.sidebar:
 
     # 1. Overlay Backdrop wrapper if open
     if st.session_state.get("app_selector_open", False):
-        with st.container():
-            st.markdown('<div class="close-overlay-wrapper"></div>', unsafe_allow_html=True)
-            if st.button("Close Selector", key="close_selector_overlay", use_container_width=True):
-                st.session_state.app_selector_open = False
-                st.rerun()
+        st.markdown('<div class="close-overlay-wrapper">', unsafe_allow_html=True)
+        if st.button(" ", key="close_selector_overlay", use_container_width=True):
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # 2. Launcher Header UI
     chevron_symbol = "▼"
@@ -600,11 +604,11 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # 3. Transparent Overlay Button for Launcher Header
-    with st.container():
-        st.markdown('<div class="toggle-btn-wrapper"></div>', unsafe_allow_html=True)
-        if st.button("Toggle Selector Menu", key="toggle_selector_btn", use_container_width=True):
-            st.session_state.app_selector_open = not st.session_state.app_selector_open
-            st.rerun()
+    st.markdown('<div class="toggle-container">', unsafe_allow_html=True)
+    if st.button(" ", key="toggle_selector_btn", use_container_width=True):
+        st.session_state.app_selector_open = not st.session_state.app_selector_open
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # 4. Floating Popup Card Menu
     if st.session_state.get("app_selector_open", False):
@@ -646,19 +650,19 @@ with st.sidebar:
         st.markdown(html_str, unsafe_allow_html=True)
 
         # 5. Floating Popup Card Click Overlays
-        with st.container():
-            st.markdown('<div class="popup-da-btn-wrapper"></div>', unsafe_allow_html=True)
-            if st.button("Select Data Auditor App", key="select_da_app", use_container_width=True):
-                st.session_state.active_app = "DATA AUDITOR"
-                st.session_state.app_selector_open = False
-                st.rerun()
+        st.markdown('<div class="popup-btn-wrap da">', unsafe_allow_html=True)
+        if st.button(" ", key="select_da_app", use_container_width=True):
+            st.session_state.active_app = "DATA AUDITOR"
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.container():
-            st.markdown('<div class="popup-cc-btn-wrapper"></div>', unsafe_allow_html=True)
-            if st.button("Select Contract Compare App", key="select_cc_app", use_container_width=True):
-                st.session_state.active_app = "CONTRACT COMPARE"
-                st.session_state.app_selector_open = False
-                st.rerun()
+        st.markdown('<div class="popup-btn-wrap cc">', unsafe_allow_html=True)
+        if st.button(" ", key="select_cc_app", use_container_width=True):
+            st.session_state.active_app = "CONTRACT COMPARE"
+            st.session_state.app_selector_open = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ─── Navigation Button Page Routing ───
     st.markdown('<div class="nav-label">NAVIGATION</div>', unsafe_allow_html=True)
@@ -691,39 +695,45 @@ with st.sidebar:
         
     selected_page = st.session_state.selected_page
     
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True) # Move settings down
     saved_key = load_key()
 
+    @st.dialog("Settings")
+    def settings_dialog():
+        st.markdown("""
+            <style>
+            div[data-testid="stDialog"] { border-radius: 16px !important; padding: 8px !important; }
+            div[data-testid="stDialog"] h2 { padding-bottom: 16px !important; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; }
+            div[data-testid="stDialog"] .stTextInput label { display: none !important; }
+            div[data-testid="stDialog"] .api-label { font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+            div[data-testid="stDialog"] .caption-text { font-size: 12px; color: #94a3b8; margin-top: 4px; margin-bottom: 24px; font-weight: 500; }
+            div[data-testid="stDialog"] button[kind="primary"] { background: #6366f1 !important; color: white !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; border: none !important; font-weight: 600 !important; }
+            div[data-testid="stDialog"] button[kind="secondary"] { border: 1px solid #e2e8f0 !important; color: #64748b !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; font-weight: 600 !important; background: white !important; }
+            div[data-testid="stDialog"] button[kind="secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="api-label">GEMINI API KEY</div>', unsafe_allow_html=True)
+        api_key_input = st.text_input("GEMINI API KEY", type="password", value=load_key() or "", label_visibility="collapsed")
+        st.markdown('<div class="caption-text">Key ถูกเก็บใน environment variable — ไม่บันทึกลงไฟล์ใดๆ</div>', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("บันทึก", type="primary", use_container_width=True):
+                if api_key_input: save_key(api_key_input)
+                st.rerun()
+        with col2:
+            if st.button("ยกเลิก", type="secondary", use_container_width=True):
+                st.rerun()
+
     # ─── Settings & Profile Area ───
-    st.markdown("""
-        <div class="settings-link">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            Settings
-        </div>
-    """, unsafe_allow_html=True)
+    if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
+        settings_dialog()
     
-    api_key = saved_key
     if is_cloud_key() or saved_key:
         st.markdown('<div class="api-status api-connected"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
-        st.markdown('<div class="api-input-wrap">', unsafe_allow_html=True)
-        api_key_input = st.text_input("GEMINI API KEY", type="password", value="", placeholder="Enter API Key...", label_visibility="collapsed")
-        if api_key_input:
-            save_key(api_key_input)
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    st.markdown("""
-        <div class="profile-card">
-            <div class="profile-avatar">D</div>
-            <div class="profile-info">
-                <div class="profile-name">David</div>
-                <div class="profile-role">Admin</div>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-    """, unsafe_allow_html=True)
 
     # ─── Recent Comparison History (Sidebar) ───
     if active_app == "CONTRACT COMPARE":
