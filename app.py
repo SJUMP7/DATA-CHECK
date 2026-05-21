@@ -1340,11 +1340,6 @@ elif selected_page == "CONTRACT COMPARE":
             for chunk in compare_utils.stream_contract_comparison(pdf1_bytes, pdf2_bytes, api_key):
                 if st.session_state.get("cc_cancel_requested"):
                     break
-                    
-                cancel_compare_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
-                if cancel_compare_placeholder.button("CANCEL COMPARISON", key="cc_cancel_btn_trigger_" + str(char_count)):
-                    st.session_state.cc_cancel_requested = True
-                    st.rerun()
 
                 if chunk == "[RESET_STREAM]":
                     chunks = []
