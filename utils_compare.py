@@ -75,14 +75,19 @@ def _build_prompt() -> str:
     import os
     # Try different fallback paths depending on deployment structure
     base_dir = os.path.dirname(os.path.dirname(__file__))
+    current_dir = os.path.dirname(__file__)
     prompt_path_1 = os.path.join(base_dir, "Recheck excel data", "prompts", "contract_compare.txt")
     prompt_path_2 = os.path.join(base_dir, "prompts", "contract_compare.txt")
+    prompt_path_3 = os.path.join(current_dir, "prompts", "contract_compare.txt")
     
     if os.path.exists(prompt_path_1):
         with open(prompt_path_1, "r", encoding="utf-8") as f:
             return f.read()
     elif os.path.exists(prompt_path_2):
         with open(prompt_path_2, "r", encoding="utf-8") as f:
+            return f.read()
+    elif os.path.exists(prompt_path_3):
+        with open(prompt_path_3, "r", encoding="utf-8") as f:
             return f.read()
     else:
         return "ERROR: contract_compare.txt not found"
