@@ -1,3 +1,14 @@
+"""
+utils.py — Business logic สำหรับ Hotel Audit Desk
+
+Functions หลัก:
+  stream_recheck_analysis()   : Audit Excel vs PDF (streaming)
+  extract_pdf_to_excel_json() : แปลง PDF → JSON rows [IN TEST]
+  create_upload_excel()       : แปลง JSON rows → .xlsx [IN TEST]
+  convert_excel_to_csv_with_letters() : helper สำหรับ token optimization
+
+ต้องการ: google-genai, pandas, openpyxl
+"""
 import io
 import time
 import pandas as pd
@@ -49,8 +60,8 @@ def _cached_model_list(api_key: str) -> list[str]:
             name = getattr(m, "name", "") or ""
             short = name.replace("models/", "")
             available.append(short)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[DEBUG] _cached_model_list error: {e}")
     return available
 
 def detect_available_model(api_key: str) -> tuple[str, list[str]]:
@@ -158,6 +169,12 @@ def convert_excel_to_csv_with_letters(excel_bytes: bytes, focus_list: list = Non
     return df.to_csv(index=False)
 
 def get_recheck_prompt(focus_list: list = None) -> str:
+    """
+    สร้าง prompt สำหรับ Gemini ในการ audit Excel vs PDF
+    Input:  focus_list = รายการ scope เช่น ["Net Price", "Cancellation Policy"]
+                         None หรือมี "All-in-One Full Scan" = ตรวจทุก column
+    Output: prompt string พร้อม column mapping และ output format
+    """
     focus_instr = ""
     if focus_list and "All-in-One Full Scan" not in focus_list:
         focus_instr = f"\n\n[SYSTEM ALERT: STRICT FOCUS MODE ACTIVE]\nYour primary objective is EXCLUSIVELY to audit: **{', '.join(focus_list)}**.\nIgnore other columns unless they are critical for mapping the selected areas. Do not report issues outside these focus areas.\n\n"
@@ -585,6 +602,7 @@ CRITICAL: Return ONLY valid JSON — no markdown, no backticks, no explanation t
 
 def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes = None):
     """
+    [IN TEST] — ยังไม่ production-ready
     Extracts every room/season/promotion combination from the PDF into a JSON list.
     If excel_bytes is provided, uses the existing Excel as a format reference and
     derives a dynamic row count threshold from the actual data (no hardcoded minimum).
@@ -630,8 +648,8 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes
                 sample_df = ref_df[lean_cols].head(5)
                 
             reference_csv = sample_df.to_csv(index=False)
-        except Exception:
-            pass  # If Excel can't be read, proceed without reference
+        except Exception as e:
+            print(f"[DEBUG] Excel reference error: {e}")  # If Excel can't be read, proceed without reference
 
     # ── Build model list ───────────────────────────────────────────────────────
     available_models_list = []
@@ -644,7 +662,8 @@ def extract_pdf_to_excel_json(pdf_bytes: bytes, api_key: str, excel_bytes: bytes
             if m not in seen:
                 seen.add(m)
                 available_models_list.append(m)
-    except Exception:
+    except Exception as e:
+        print(f"[DEBUG] _FALLBACK_MODELS error: {e}")
         available_models_list = _FALLBACK_MODELS
 
     # ── Config: no response_mime_type so the model doesn't suppress repeated rows ──

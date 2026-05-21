@@ -1,13 +1,29 @@
+"""
+app.py — Streamlit UI layer สำหรับ Hotel Audit Desk
+
+Pages:
+  - DATA AUDITOR    : ตรวจสอบ Excel vs PDF Contract (utils.py)
+  - CONTRACT COMPARE: เปรียบเทียบสัญญา 2 ปี (utils2.py / utils_compare.py)
+  - EXCEL GENERATOR : สร้างไฟล์ Excel จาก PDF (utils.py)
+
+State keys: ดู _KEY_* constants บรรทัด 132-146
+CSS:        load_css() บรรทัด 149 — tested on streamlit==1.42.0
+"""
 import os
 import re
 import json
 import copy
 from datetime import datetime
 import streamlit as st
-from utils import stream_recheck_analysis, validate_api_key
+from utils import stream_recheck_analysis, validate_api_key, extract_pdf_to_excel_json, create_upload_excel
 
 # ─── Dynamic Honest Milestone Parser ─────────────────────────────────────────
-def get_honest_milestone(full_text, chunk_count):
+def get_honest_milestone(full_text: str, chunk_count: int) -> tuple[int, str]:
+    """
+    แปลง streaming text ที่ได้จาก Gemini เป็น phase label สำหรับ progress bar
+    Input:  full_text = สะสม text ที่ stream มาแล้ว, chunk_count = จำนวน chunks
+    Output: tuple ของ (เปอร์เซ็นต์, ข้อความเช่น "Reading Contract PDF...")
+    """
     if not full_text:
         return 5, "Initializing AI Engine..."
     if "[SECTION_FAIL]" not in full_text:
@@ -53,7 +69,7 @@ def _repair_json(text: str) -> str:
         text += "".join(reversed(stack))
     return text
 
-# ─── Interactive Cancellation Interrupt (C2 & H2) ───────────────────────────
+# ─── Cancellation Interrupt (UX Fix C2: ป้องกัน user ถูก lock ใน loading) ───
 if "cancel_requested" not in st.session_state:
     st.session_state.cancel_requested = False
 
@@ -64,7 +80,7 @@ if st.session_state.get("cancel_btn_trigger") or st.session_state.get("cancel_re
     st.session_state.pop("cancel_btn_trigger", None)
     st.rerun()
 
-# ─── Destructive Start Fresh Confirmation Modal (C1) ─────────────────────────
+# ─── Reset Confirmation Modal (UX Fix C1: destructive action ต้องมี confirm) ──
 if st.session_state.get("confirm_reset", False):
     st.markdown("""
         <div class="fixed-overlay"></div>
@@ -127,7 +143,7 @@ try:
             compare_excel = importlib.util.module_from_spec(_spec_excel)
             _spec_excel.loader.exec_module(compare_excel)
 except Exception as e:
-    pass
+    print(f"[DEBUG] {type(e).__name__}: {e}")
 
 # ─── Session State Key Constants (prevents silent typo bugs) ─────────────────
 _KEY_AUDIT_DONE   = "audit_done"
@@ -145,13 +161,14 @@ st.set_page_config(
 )
 
 # ─── CSS INJECTION ───────────────────────────────────────────────────────────
-# ─── CSS INJECTION ───────────────────────────────────────────────────────────
 def load_css():
     st.markdown("""
     <style>
+    /* ═══ TESTED ON: streamlit==1.42.0 — upgrade อาจทำให้ selector เปลี่ยน ═══ */
+
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    /* ── Reset & Base ──────────────────────────────────────────── */
+    /* ── 1. Global Typography ──────────────────────────────────── */
     html { scroll-behavior: smooth !important; }
     *, *::before, *::after { box-sizing: border-box; }
     html, body, p, li, th, td, h1, h2, h3, h4, h5, h6,
@@ -537,16 +554,23 @@ def save_key(k):
         if os.path.exists(".gemini_key"):
             try:
                 os.remove(".gemini_key")
-            except Exception:
-                pass
-    except Exception:
-        pass  # Read-only filesystem (Streamlit Cloud) — ignored
+            except Exception as e:
+                print(f"[DEBUG] {type(e).__name__}: {e}")
+    except Exception as e:
+        print(f"[DEBUG] save_key failed (readonly fs?): {e}")
 
 def is_cloud_key():
     return bool(_CLOUD_KEY)
 
 # ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
-def apply_badges(text):
+def apply_badges(text: str) -> str:
+    """
+    แปลง section markers จาก Gemini output เป็น styled HTML badges
+    Markers ที่รองรับ: [SECTION_FAIL], [SECTION_REVIEW], [SECTION_VERIFIED]
+    Input:  raw markdown/text string จาก streaming result
+    Output: HTML string พร้อม badge styling
+    Side effect: ไม่มี (pure function)
+    """
     import re as _re
     import html
     text = html.unescape(text)
@@ -561,6 +585,11 @@ def apply_badges(text):
     # Spacing fix: ensure blank line before each bullet
     text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
     return text
+
+# ─── SAFE DEFAULTS (prevent NameError if sidebar errors) ─────────────────────
+saved_key = load_key()
+api_key = saved_key
+selected_page = st.session_state.get("selected_page", "CONTRACT AUDITOR")
 
 with st.sidebar:
     # ─── Sidebar Selector Markup and Overlays ───
@@ -686,7 +715,6 @@ with st.sidebar:
             st.rerun()
         
     selected_page = st.session_state.selected_page
-    
     saved_key = load_key()
     api_key = saved_key
 
@@ -711,11 +739,11 @@ with st.sidebar:
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("บันทึก", type="primary", use_container_width=True):
+            if st.button("บันทึก", type="primary", use_container_width=True, key="settings_save_btn"):
                 if api_key_input: save_key(api_key_input)
                 st.rerun()
         with col2:
-            if st.button("ยกเลิก", type="secondary", use_container_width=True):
+            if st.button("ยกเลิก", type="secondary", use_container_width=True, key="settings_cancel_btn"):
                 st.rerun()
 
     # ─── Settings & Profile Area ───
@@ -778,8 +806,8 @@ with st.sidebar:
                             key="history_" + hf,
                             use_container_width=True
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[DEBUG] History read failed: {e}")
 
 
 
@@ -905,7 +933,7 @@ if selected_page == "AI EXCEL GENERATOR":
                     st.error(f"Generation failed: {str(e)}")
 
     if not gen_ready:
-        hint = "Upload PDF file to continue" if not has_pdf_gen else "Enter API Key in sidebar"
+        hint = "Upload PDF file to continue" if not has_pdf_gen else "Enter API Key in Settings"
         st.markdown(f"<p style='text-align:center;color:rgba(130, 130, 130, 0.5);font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
         
     st.stop()
@@ -969,7 +997,7 @@ elif selected_page == "CONTRACT COMPARE":
                     st.rerun()
                 
                 if not ready:
-                    hint = "Upload both contracts to continue" if not (up1 and up2) else "Add API Key in sidebar"
+                    hint = "Upload both contracts to continue" if not (up1 and up2) else "Add API Key in Settings"
                     st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>",
                                 unsafe_allow_html=True)
 
@@ -990,7 +1018,7 @@ elif selected_page == "CONTRACT COMPARE":
     if st.session_state.get("cc_started"):
         placeholder = st.empty()
         
-        def render_modal(pct):
+        def render_compare_modal(pct):
             placeholder.markdown(f"""
                 <div class="fixed-overlay"></div>
                 <div class="fixed-modal">
@@ -1004,7 +1032,7 @@ elif selected_page == "CONTRACT COMPARE":
                 </div>
             """, unsafe_allow_html=True)
             
-        render_modal(10)
+        render_compare_modal(10)
         
         if not up1 or not up2:
             placeholder.empty()
@@ -1039,13 +1067,13 @@ elif selected_page == "CONTRACT COMPARE":
                 if chunk == "[RESET_STREAM]":
                     chunks = []
                     char_count = 0
-                    render_modal(10)
+                    render_compare_modal(10)
                     continue
                     
                 chunks.append(chunk)
                 char_count += len(chunk)
                 pct = min(15 + int(char_count / EXPECTED_CHARS * 80), 98)
-                render_modal(pct)
+                render_compare_modal(pct)
 
             cancel_compare_placeholder.empty()
             
@@ -1055,7 +1083,7 @@ elif selected_page == "CONTRACT COMPARE":
                 placeholder.empty()
                 st.rerun()
                 
-            render_modal(100)
+            render_compare_modal(100)
             placeholder.empty()
             
             result_raw = "".join(chunks)
@@ -1188,7 +1216,7 @@ elif selected_page == "CONTRACT COMPARE":
                 with open(os.path.join("history", history_file_name), "wb") as f:
                     f.write(excel_bytes)
             except Exception as e:
-                pass
+                print(f"[DEBUG] History write failed: {e}")
                 
         except Exception as ex:
             st.error(f"Excel generation failed: {ex}")
@@ -1327,7 +1355,7 @@ with st.expander("UPLOAD & SCOPE SETTINGS", expanded=not _audit_done):
             st.rerun()
 
     if not ready and not st.session_state.get("is_auditing"):
-        hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in sidebar"
+        hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in Settings"
         st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
 
 
@@ -1349,7 +1377,7 @@ if st.session_state.get("is_auditing"):
     # Initial Loading State
     focus_text = ", ".join(st.session_state.get("focus_list", [])) or "Full Scan"
 
-    def render_modal(perc, phase):
+    def render_audit_modal(perc, phase):
         modal_placeholder.markdown(f"""
             <div class="fixed-overlay"></div>
             <div class="fixed-modal">
@@ -1361,7 +1389,7 @@ if st.session_state.get("is_auditing"):
             </div>
         """, unsafe_allow_html=True)
 
-    render_modal(5, "Initializing AI Engine...")
+    render_audit_modal(5, "Initializing AI Engine...")
     
     # Centered floating cancel button above overlay
     cancel_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
@@ -1381,7 +1409,7 @@ if st.session_state.get("is_auditing"):
             
             # Dynamic honest milestone parsing
             current_perc, current_phase = get_honest_milestone(full_response, chunk_count)
-            render_modal(current_perc, current_phase)
+            render_audit_modal(current_perc, current_phase)
             
             # Re-draw the cancel button to keep it clickable in the event-loop
             cancel_placeholder.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
@@ -1398,7 +1426,7 @@ if st.session_state.get("is_auditing"):
             display_response = apply_badges(full_response)
             report_placeholder.markdown(f'<div class="output-card">\n\n{display_response}▌\n\n</div>', unsafe_allow_html=True)
         
-        render_modal(100, "Audit Complete")
+        render_audit_modal(100, "Audit Complete")
         modal_placeholder.empty()
         cancel_placeholder.empty()
         

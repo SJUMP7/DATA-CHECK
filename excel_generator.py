@@ -71,6 +71,22 @@ def _clean_price(val):
 
 
 def generate_comparison_excel(data: dict) -> bytes:
+    """
+    สร้าง Excel workbook จาก JSON ที่ได้จาก Gemini Compare Contract
+    Input schema:
+        data = {
+            "hotel_name": str,
+            "year_1": str,           # เช่น "24/25"
+            "year_2": str,           # เช่น "25/26"
+            "seasons": [...],        # list of season objects
+            "extra_bed": [...],      # policy sections
+            "early_bird": [...],
+            "bonus_night": [...],
+            "wellbeing": [...],
+            "cancellation": [...]
+        }
+    Output: bytes ของ .xlsx file พร้อม download
+    """
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Comparison Report"
