@@ -101,18 +101,31 @@ if "app_selector_open" not in st.session_state:
 compare_utils = None
 compare_excel = None
 try:
-    _compare_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../COMPARE CONTRACT"))
-    _utils_path = os.path.join(_compare_dir, "utils.py")
-    if os.path.exists(_utils_path):
+    _base_dir = os.path.dirname(__file__)
+    # Search for the utils.py file in multiple possible deployment structures
+    _possible_dirs = [
+        os.path.abspath(os.path.join(_base_dir, "../COMPARE CONTRACT")), # Local Windows setup
+        os.path.abspath(os.path.join(_base_dir, "COMPARE CONTRACT")),    # Cloud subfolder setup
+        os.path.abspath(_base_dir)                                       # Cloud root dump setup
+    ]
+    
+    _compare_dir = None
+    for d in _possible_dirs:
+        if os.path.exists(os.path.join(d, "utils2.py")):
+            _compare_dir = d
+            break
+            
+    if _compare_dir:
+        _utils_path = os.path.join(_compare_dir, "utils2.py")
         _spec_utils = importlib.util.spec_from_file_location("compare_utils", _utils_path)
         compare_utils = importlib.util.module_from_spec(_spec_utils)
         _spec_utils.loader.exec_module(compare_utils)
-    
-    _excel_path = os.path.join(_compare_dir, "excel_generator.py")
-    if os.path.exists(_excel_path):
-        _spec_excel = importlib.util.spec_from_file_location("compare_excel", _excel_path)
-        compare_excel = importlib.util.module_from_spec(_spec_excel)
-        _spec_excel.loader.exec_module(compare_excel)
+        
+        _excel_path = os.path.join(_compare_dir, "excel_generator.py")
+        if os.path.exists(_excel_path):
+            _spec_excel = importlib.util.spec_from_file_location("compare_excel", _excel_path)
+            compare_excel = importlib.util.module_from_spec(_spec_excel)
+            _spec_excel.loader.exec_module(compare_excel)
 except Exception as e:
     pass
 
@@ -1301,6 +1314,12 @@ elif selected_page == "CONTRACT COMPARE":
         if not up1 or not up2:
             placeholder.empty()
             st.error("Upload files not found. Please upload both contracts and try again.")
+            st.session_state.cc_started = False
+            st.stop()
+            
+        if compare_utils is None:
+            placeholder.empty()
+            st.error("The CONTRACT COMPARE module (`utils2.py`) was not found in your cloud deployment. Please ensure you uploaded all files to your GitHub repository.")
             st.session_state.cc_started = False
             st.stop()
         
