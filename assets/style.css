@@ -289,7 +289,7 @@
         .app-selector-header-container:hover { background: #f1f5f9 !important; border-color: #e2e8f0 !important; }
         .app-selector-header { display: flex; align-items: center; gap: 10px; width: 100%; }
         .logo-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 12px; color: #ffffff !important; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.08) !important; }
-        .da-logo { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; }
+        .da-logo { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; }
         .cc-logo { background: linear-gradient(135deg, #0891b2, #22d3ee) !important; }
         .app-selector-header .text-block { flex-grow: 1; text-align: left; line-height: 1.2; }
         .app-selector-header .main-title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--text-color) !important; }
