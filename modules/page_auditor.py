@@ -5,7 +5,7 @@ import time
 import re
 from utils import stream_recheck_analysis
 
-def render_page_auditor(api_key, render_audit_modal, get_honest_milestone, apply_badges):
+def render_page_auditor(api_key, render_audit_modal, get_honest_milestone, apply_badges, anim_class):
     # ─── Upload Area ───────────────────────────────────────────────────────────────
     _audit_done = st.session_state.get("audit_done", False) and bool(st.session_state.get("_audit_result"))
     _is_auditing = st.session_state.get("is_auditing", False)

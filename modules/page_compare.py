@@ -5,6 +5,9 @@ import time
 import re
 import pandas as pd
 import io
+import json
+import copy
+from modules.helpers import _clean_json, _repair_json
 
 def render_page_compare(api_key, compare_utils, compare_excel, render_compare_modal):
         # ─── Interrupt Check for Cancellation ───

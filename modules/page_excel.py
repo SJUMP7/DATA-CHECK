@@ -4,7 +4,7 @@ from datetime import datetime
 from utils_generator import extract_pdf_to_excel_json, create_upload_excel
 
 def render_page_excel(api_key, anim_class):
-        if selected_page == "AI EXCEL GENERATOR":
+        if True:
             col1, col2 = st.columns(2, gap="large")
     
             with col1:
