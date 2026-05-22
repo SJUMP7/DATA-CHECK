@@ -1,4 +1,3 @@
-import os
 """
 utils.py — Business logic สำหรับ Hotel Audit Desk
 
@@ -10,6 +9,7 @@ Functions หลัก:
 
 ต้องการ: google-genai, pandas, openpyxl
 """
+import os
 import io
 import time
 import pandas as pd

@@ -19,58 +19,10 @@ from gemini_client import validate_api_key
 from utils import stream_recheck_analysis
 from utils_generator import extract_pdf_to_excel_json, create_upload_excel
 
-from modules.helpers import get_honest_milestone, _clean_json, _repair_json, render_audit_modal, render_compare_modal, apply_badges
-# ─── Dynamic Honest Milestone Parser ─────────────────────────────────────────
-def get_honest_milestone(full_text: str, chunk_count: int) -> tuple[int, str]:
-    """
-    แปลง streaming text ที่ได้จาก Gemini เป็น phase label สำหรับ progress bar
-    Input:  full_text = สะสม text ที่ stream มาแล้ว, chunk_count = จำนวน chunks
-    Output: tuple ของ (เปอร์เซ็นต์, ข้อความเช่น "Reading Contract PDF...")
-    """
-    if not full_text:
-        return 5, "Initializing AI Engine..."
-    if "[SECTION_FAIL]" not in full_text:
-        # Phase 1: Analyzing PDF structure
-        perc = min(10 + (chunk_count * 1.5), 30)
-        return perc, "Reading Contract PDF..."
-    if "[SECTION_REVIEW]" not in full_text:
-        # Phase 2: Cross-referencing pricing rows
-        perc = min(30 + (chunk_count * 0.8), 65)
-        return perc, "Cross-Referencing Excel Rates..."
-    if "คะแนนความถูกต้อง" not in full_text:
-        # Phase 3: Validating cancellation and child policies
-        perc = min(65 + (chunk_count * 0.5), 90)
-        return perc, "Validating Booking Policies..."
-    # Phase 4: Finalizing report assembly
-    perc = min(90 + (chunk_count * 0.3), 98)
-    return perc, "Assembling Final Audit Score..."
-
-# ─── Clean & Repair JSON helper ───────────────────────────────────────────────
-def _clean_json(raw: str) -> str:
-    text = re.sub(r"```(?:json)?", "", raw).strip()
-    s, e = text.find("{"), text.rfind("}")
-    if s != -1 and e > s:
-        text = text[s: e + 1]
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
-    return text
-
-def _repair_json(text: str) -> str:
-    if not text: return text
-    text = re.sub(r',\s*([\]\}])', r'\1', text)
-    text = re.sub(r',?\s*"[^"]*"\s*:\s*[^,}\]]*$', '', text)
-    text = re.sub(r',?\s*"[^"]*"\s*:\s*$', '', text)
-    text = re.sub(r',?\s*$', '', text)
-    
-    stack = []
-    for char in text:
-        if char == '{': stack.append('}')
-        elif char == '[': stack.append(']')
-        elif char in ('}', ']'):
-            if stack and stack[-1] == char:
-                stack.pop()
-    if stack:
-        text += "".join(reversed(stack))
-    return text
+from modules.helpers import (
+    get_honest_milestone, _clean_json, _repair_json,
+    render_audit_modal, render_compare_modal, apply_badges
+)
 
 def main():
     st.set_page_config(
@@ -106,7 +58,7 @@ def main():
             if st.button("ยืนยันการล้างข้อมูล", type="primary", use_container_width=True, key="confirm_reset_yes"):
                 # Clear all states
                 for key in ["audit_done", "is_auditing", "_audit_result", "prev_focus", "show_upload", "pdf", "excel", 
-                            "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name", "confirm_reset"]:
+                            "cached_pdf_bytes", "cached_pdf_name", "cached_excel_bytes", "cached_excel_name", "confirm_reset", "audit_history", "cc_history"]:
                     st.session_state.pop(key, None)
                 st.rerun()
         with btn2:
@@ -115,43 +67,47 @@ def main():
                 st.rerun()
         st.stop()
     
-    # ─── Dynamic Module Loading for COMPARE CONTRACT ─────────────────────────────
-    import importlib.util
+    # ─── Initialization of persistent histories ────────────────────────────────
+    if "audit_history" not in st.session_state:
+        st.session_state.audit_history = []
+    if "cc_history" not in st.session_state:
+        st.session_state.cc_history = []
     
+    # ─── Dynamic Module Loading for COMPARE CONTRACT ─────────────────────────────
     if "active_app" not in st.session_state:
         st.session_state.active_app = "DATA AUDITOR"
     
     if "app_selector_open" not in st.session_state:
         st.session_state.app_selector_open = False
     
+    # ─── Load compare modules ─────────────────────────────────────────────────────
+    # Cloud: utils_compare.py is at repo root — direct import works.
+    # Local dev: utils_compare.py lives in ../COMPARE CONTRACT — added to sys.path.
     compare_utils = None
     compare_excel = None
     try:
-        _base_dir = os.path.dirname(__file__)
-        # Search for the utils.py file in multiple possible deployment structures
-        _possible_dirs = [
-            os.path.abspath(os.path.join(_base_dir, "../COMPARE CONTRACT")), # Local Windows setup
-            os.path.abspath(os.path.join(_base_dir, "COMPARE CONTRACT")),    # Cloud subfolder setup
-            os.path.abspath(_base_dir)                                       # Cloud root dump setup
-        ]
-        
-        _compare_dir = None
-        for d in _possible_dirs:
-            if os.path.exists(os.path.join(d, "utils_compare.py")):
-                _compare_dir = d
-                break
-                
-        if _compare_dir:
+        import utils_compare as compare_utils
+        try:
+            import excel_generator as compare_excel
+        except ImportError:
+            compare_excel = None
+    except ImportError:
+        try:
             import sys
-            if _compare_dir not in sys.path:
-                sys.path.append(_compare_dir)
+            _cc_dir = os.path.abspath(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "../COMPARE CONTRACT")
+            )
+            if _cc_dir not in sys.path:
+                sys.path.insert(0, _cc_dir)
             import utils_compare as compare_utils
             try:
                 import excel_generator as compare_excel
             except ImportError:
                 compare_excel = None
-    except Exception as e:
-        print(f"[DEBUG] {type(e).__name__}: {e}")
+        except Exception:
+            pass  # CONTRACT COMPARE module not deployed — feature disabled
+
+
     
     # ─── Session State Key Constants (prevents silent typo bugs) ─────────────────
     _KEY_AUDIT_DONE   = "audit_done"
@@ -241,29 +197,7 @@ def main():
     def is_cloud_key():
         return bool(_CLOUD_KEY)
 
-    # ─── apply_badges — top-level utility (used by both streaming & saved-report) ─
-    def apply_badges(text: str) -> str:
-        """
-        แปลง section markers จาก Gemini output เป็น styled HTML badges
-        Markers ที่รองรับ: [SECTION_FAIL], [SECTION_REVIEW], [SECTION_VERIFIED]
-        Input:  raw markdown/text string จาก streaming result
-        Output: HTML string พร้อม badge styling
-        Side effect: ไม่มี (pure function)
-        """
-        import re as _re
-        import html
-        text = html.unescape(text)
-        text = text.replace("[SECTION_FAIL]", '\n\n<div class="section-accent accent-fail">\n\n')
-        text = text.replace("[SECTION_REVIEW]", '\n\n</div>\n\n<div class="section-accent accent-review">\n\n')
-        text = text.replace("[SECTION_VERIFIED]", '\n\n</div>\n\n<div class="section-accent accent-verified">\n\n')
-        text = text.replace("[FAIL]", '<span class="badge badge-fail">FAIL</span>')
-        text = text.replace("[REVIEW]", '<span class="badge badge-review">REVIEW</span>')
-        text = text.replace("[VERIFIED]", '<span class="badge badge-verified">VERIFIED</span>')
-        if '<div class="section-accent' in text and text.rstrip()[-6:] != '</div>':
-            text += "\n\n</div>\n\n"
-        # Spacing fix: ensure blank line before each bullet
-        text = _re.sub(r'(?<!\n)\n(• |\* |-  ?(?=\S))', r'\n\n\1', text)
-        return text
+    # apply_badges, get_honest_milestone imported from modules.helpers (canonical)
 
     # ─── SAFE DEFAULTS (prevent NameError if sidebar errors) ─────────────────────
     saved_key = load_key()
@@ -458,35 +392,54 @@ def main():
             else:
                 st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
 
-        # ─── Recent Comparison History (Sidebar) ───
+        # ─── Recent History Sidebar ────────────────────────────────────────────
         if active_app == "CONTRACT COMPARE":
-            st.markdown("<div style='font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.4; margin-bottom: 8px; margin-top: 32px;'>RECENT AUDITS</div>", unsafe_allow_html=True)
-            os.makedirs("history", exist_ok=True)
-            history_files = sorted([f for f in os.listdir("history") if f.endswith(".xlsx")], reverse=True)
-            if not history_files:
-                st.markdown("<div style='font-size: 11px; opacity: 0.5; padding-left: 4px;'>No recent audits found.</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT COMPARISONS</div>", unsafe_allow_html=True)
+            cc_history = st.session_state.get("cc_history", [])
+            if not cc_history:
+                st.markdown("<div style='font-size:11px;opacity:0.5;padding-left:4px;'>No comparisons yet.</div>", unsafe_allow_html=True)
             else:
-                for hf in history_files[:8]:
-                    if hf.startswith("Comparison_"):
-                        display_name = hf.split('_vs_')[0].replace('Comparison_', '')
-                        if len(display_name) > 22:
-                            display_name = display_name[:20] + "..."
-                    else:
-                        parts = hf.rsplit("_", 2)
-                        display_name = parts[0][:22] if len(parts) >= 3 else hf[:22]
+                for entry in cc_history:
+                    label = entry.get("name", "Unknown")[:22].upper()
+                    st.download_button(
+                        label=label,
+                        data=entry["data"],
+                        file_name=f"{entry['name']}_{entry['timestamp']}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"cc_hist_{entry['timestamp']}",
+                        use_container_width=True
+                    )
 
-                    try:
-                        with open(os.path.join("history", hf), "rb") as f:
-                            st.download_button(
-                                label=f"{display_name.upper()}",
-                                data=f.read(),
-                                file_name=hf,
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key="history_" + hf,
-                                use_container_width=True
-                            )
-                    except Exception as e:
-                        print(f"[DEBUG] History read failed: {e}")
+        elif active_app == "DATA AUDITOR":
+            st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT AUDITS</div>", unsafe_allow_html=True)
+            audit_history = st.session_state.get("audit_history", [])
+            if not audit_history:
+                st.markdown("<div style='font-size:11px;opacity:0.5;padding-left:4px;'>No audits this session.</div>", unsafe_allow_html=True)
+            else:
+                for entry in audit_history:
+                    score = entry.get("score")
+                    score_str = f" — {score:.0f}%" if score is not None else ""
+                    color = "#10b981" if (score or 0) >= 90 else "#f59e0b" if (score or 0) >= 70 else "#ef4444"
+                    label = entry.get("name", "Audit")[:18]
+                    ts = entry.get("timestamp", "")
+                    st.markdown(f"""
+                        <div style="padding:8px 10px;border-radius:8px;border:1px solid rgba(130,130,130,0.12);
+                                    background:var(--secondary-background-color);margin-bottom:6px;cursor:default;">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-color);opacity:0.9;">{label.upper()}</div>
+                            <div style="font-size:10px;margin-top:2px;color:{color};font-weight:700;">{score_str if score_str else 'In Progress'}</div>
+                            <div style="font-size:9px;opacity:0.4;margin-top:1px;">{ts}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    if entry.get("markdown"):
+                        st.download_button(
+                            label="↓ .md",
+                            data=entry["markdown"],
+                            file_name=f"{entry['name']}_{ts}.md",
+                            mime="text/markdown",
+                            key=f"audit_hist_md_{ts}",
+                            use_container_width=True
+                        )
+
 
 
 
@@ -549,16 +502,13 @@ def main():
 
     # ─── PAGE ROUTING ──────────────────────────────────────────────────────────────
     if selected_page == "AI EXCEL GENERATOR":
-        col1, col2 = st.columns(2, gap="large")
-    # ─── PAGE ROUTING (MODULARIZED) ────────────────────────────────────────────────
-    if selected_page == "AI EXCEL GENERATOR":
         from modules.page_excel import render_page_excel
         render_page_excel(api_key, anim_class)
     elif selected_page == "CONTRACT COMPARE":
         from modules.page_compare import render_page_compare
-        render_page_compare(api_key, compare_utils, compare_excel, render_compare_modal)
+        render_page_compare(api_key, compare_utils, compare_excel)
     elif selected_page == "CONTRACT AUDITOR":
         from modules.page_auditor import render_page_auditor
-        render_page_auditor(api_key, render_audit_modal, get_honest_milestone, apply_badges, anim_class)
+        render_page_auditor(api_key, anim_class)
 if __name__ == '__main__':
     main()
