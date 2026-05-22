@@ -480,23 +480,23 @@ def main():
     if selected_page in ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]:
         st.markdown("""
         <style>
-        /* Override indigo with sky blue theme */
-        .c-eye { color: #0ea5e9 !important; }
-        .c-ttl { border-left-color: #0ea5e9 !important; }
-        .h1 { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
-        [data-testid="stMainBlockContainer"] button[kind="primary"] { background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important; box-shadow: 0 4px 14px rgba(14,165,233,0.25) !important; }
-        [data-testid="stMainBlockContainer"] button[kind="primary"]:hover { box-shadow: 0 6px 20px rgba(14,165,233,0.35) !important; }
-        .score-number { color: #0ea5e9 !important; }
-        .score-card { border-top-color: #0ea5e9 !important; }
-        .output-section h3 { background: rgba(14,165,233,0.04) !important; border-left-color: #0ea5e9 !important; }
-        .spinner-loader { border-top-color: #0ea5e9 !important; }
-        .progress-fill { background: linear-gradient(90deg, #0ea5e9, #38bdf8) !important; }
-        .perc-text { color: #0ea5e9 !important; }
-        details[open] { border-color: rgba(14,165,233,0.22) !important; box-shadow: 0 4px 16px rgba(14,165,233,0.06) !important; }
-        summary { color: #0ea5e9 !important; background: rgba(14,165,233,0.03) !important; }
-        summary:hover { background: rgba(14,165,233,0.06) !important; }
-        .unified-card:hover { border-color: rgba(14,165,233,0.18) !important; box-shadow: 0 4px 16px rgba(14,165,233,0.06) !important; }
-        .divider { background: linear-gradient(90deg, transparent, rgba(14,165,233,0.1), transparent) !important; }
+        /* Override primary theme with Purple/Fuchsia gradient for Data Auditor */
+        .c-eye { color: #8b5cf6 !important; }
+        .c-ttl { border-left-color: #8b5cf6 !important; }
+        .h1 { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+        [data-testid="stMainBlockContainer"] button[kind="primary"] { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; box-shadow: 0 4px 14px rgba(139,92,246,0.25) !important; }
+        [data-testid="stMainBlockContainer"] button[kind="primary"]:hover { box-shadow: 0 6px 20px rgba(139,92,246,0.35) !important; }
+        .score-number { color: #8b5cf6 !important; }
+        .score-card { border-top-color: #8b5cf6 !important; }
+        .output-section h3 { background: rgba(139,92,246,0.04) !important; border-left-color: #8b5cf6 !important; }
+        .spinner-loader { border-top-color: #8b5cf6 !important; }
+        .progress-fill { background: linear-gradient(90deg, #8b5cf6, #d946ef) !important; }
+        .perc-text { color: #8b5cf6 !important; }
+        details[open] { border-color: rgba(139,92,246,0.22) !important; box-shadow: 0 4px 16px rgba(139,92,246,0.06) !important; }
+        summary { color: #8b5cf6 !important; background: rgba(139,92,246,0.03) !important; }
+        summary:hover { background: rgba(139,92,246,0.06) !important; }
+        .unified-card:hover { border-color: rgba(139,92,246,0.18) !important; box-shadow: 0 4px 16px rgba(139,92,246,0.06) !important; }
+        .divider { background: linear-gradient(90deg, transparent, rgba(139,92,246,0.1), transparent) !important; }
         </style>
         """, unsafe_allow_html=True)
 
