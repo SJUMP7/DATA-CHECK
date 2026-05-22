@@ -7,9 +7,9 @@ import pandas as pd
 import io
 import json
 import copy
-from modules.helpers import _clean_json, _repair_json
+from modules.helpers import _clean_json, _repair_json, render_compare_modal
 
-def render_page_compare(api_key, compare_utils, compare_excel, render_compare_modal):
+def render_page_compare(api_key, compare_utils, compare_excel):
         # ─── Interrupt Check for Cancellation ───
         if "cc_cancel_requested" not in st.session_state:
             st.session_state.cc_cancel_requested = False
@@ -29,18 +29,20 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
             st.markdown("<div style='font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-color);opacity:0.5;margin-bottom:16px;'>Upload Contracts</div>", unsafe_allow_html=True)
             c1, c2 = st.columns(2, gap="large")
             with c1:
-                st.markdown('<div class="unified-card"><div class="c-eye">STEP 1</div><div class="c-ttl">Previous Contract</div>', unsafe_allow_html=True)
-                up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
-                if up1:
-                    st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up1.name}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="unified-card-header"><div class="c-eye">STEP 1</div><div class="c-ttl" style="margin-bottom:4px;">Previous Contract</div></div>', unsafe_allow_html=True)
+                    up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
+                    if up1:
+                        st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up1.name}</div>', unsafe_allow_html=True)
+
     
             with c2:
-                st.markdown('<div class="unified-card"><div class="c-eye">STEP 2</div><div class="c-ttl">New Contract</div>', unsafe_allow_html=True)
-                up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
-                if up2:
-                    st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up2.name}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="unified-card-header"><div class="c-eye">STEP 2</div><div class="c-ttl" style="margin-bottom:4px;">New Contract</div></div>', unsafe_allow_html=True)
+                    up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
+                    if up2:
+                        st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up2.name}</div>', unsafe_allow_html=True)
+
     
             st.markdown("<br>", unsafe_allow_html=True)
     
@@ -89,21 +91,7 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
         if st.session_state.get("cc_started"):
             placeholder = st.empty()
     
-            def render_compare_modal(pct):
-                placeholder.markdown(f"""
-                    <div class="fixed-overlay"></div>
-                    <div class="fixed-modal">
-                        <div class="spinner-loader" style="margin-bottom:20px;"></div>
-                        <h3 style="margin:0 0 8px; font-weight:700;">Analyzing Contracts...</h3>
-                        <p style="margin:0; font-size:14px; opacity:0.8;">Extracting policy rules and prices. Please wait.</p>
-                        <div style="margin-top:24px; background:var(--secondary-background-color); border-radius:10px; height:6px; overflow:hidden;">
-                            <div style="background: linear-gradient(90deg, #3b82f6, #8b5cf6); width: {pct}%; height: 100%; transition: width 0.3s ease;"></div>
-                        </div>
-                        <div style="text-align:right; font-size:12px; margin-top:6px; font-weight:600; color:#3b82f6;">{pct}%</div>
-                    </div>
-                """, unsafe_allow_html=True)
-    
-            render_compare_modal(10)
+            render_compare_modal(placeholder, 10)
     
             if not up1 or not up2:
                 placeholder.empty()
@@ -142,13 +130,13 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
                     if chunk == "[RESET_STREAM]":
                         chunks = []
                         char_count = 0
-                        render_compare_modal(10)
+                        render_compare_modal(placeholder, 10)
                         continue
     
                     chunks.append(chunk)
                     char_count += len(chunk)
                     pct = min(15 + int(char_count / EXPECTED_CHARS * 80), 98)
-                    render_compare_modal(pct)
+                    render_compare_modal(placeholder, pct)
     
                 cancel_compare_placeholder.empty()
     
@@ -158,7 +146,7 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
                     placeholder.empty()
                     st.rerun()
     
-                render_compare_modal(100)
+                render_compare_modal(placeholder, 100)
                 placeholder.empty()
     
                 result_raw = "".join(chunks)
@@ -197,8 +185,12 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
             except Exception as e:
                 placeholder.empty()
                 cancel_compare_placeholder.empty()
-                st.error(f"Comparison failed: {str(e)}")
                 st.session_state.cc_started = False
+                st.error(f"Comparison failed: {str(e)}")
+                # Retry: files are still held as uploaded objects in session
+                if st.button("\U0001f504 Retry with same files", key="retry_compare_btn"):
+                    st.session_state.cc_started = True
+                    st.rerun()
     
         # ─── Review & Edit Mode ───────────────────────────────────────────────────
         if st.session_state.get("cc_review_mode"):
@@ -273,25 +265,23 @@ def render_page_compare(api_key, compare_utils, compare_excel, render_compare_mo
             try:
                 excel_bytes = compare_excel.generate_comparison_excel(data)
     
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                timestamp = datetime.now().strftime("%H:%M")
                 hotel_name_raw = data.get("hotel_name")
-                if not hotel_name_raw or not str(hotel_name_raw).strip():
+                if not hotel_name_raw or not str(hotel_name_raw).strip() or str(hotel_name_raw).upper() == "HOTEL NAME":
                     hotel_name = "Unknown_Hotel"
                 else:
                     hotel_name = str(hotel_name_raw).strip()
-    
-                if hotel_name.upper() == "HOTEL NAME":
-                    hotel_name = "Unknown_Hotel"
-    
-                hotel_name_safe = re.sub(r'[\\/*?:"<>|]', "", hotel_name)
-                history_file_name = f"{hotel_name_safe}_{timestamp}.xlsx"
-    
-                try:
-                    os.makedirs("history", exist_ok=True)
-                    with open(os.path.join("history", history_file_name), "wb") as f:
-                        f.write(excel_bytes)
-                except Exception as e:
-                    print(f"[DEBUG] History write failed: {e}")
+                hotel_name_safe = re.sub(r'[\\/*?"<>|]', "", hotel_name)
+
+                # Save to session_state cc_history (cloud-safe, no filesystem)
+                if "cc_history" not in st.session_state:
+                    st.session_state.cc_history = []
+                st.session_state.cc_history.insert(0, {
+                    "name": hotel_name_safe,
+                    "data": excel_bytes,
+                    "timestamp": timestamp,
+                })
+                st.session_state.cc_history = st.session_state.cc_history[:8]
     
             except Exception as ex:
                 st.error(f"Excel generation failed: {ex}")
