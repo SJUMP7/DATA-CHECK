@@ -559,6 +559,6 @@ def main():
         render_page_compare(api_key, compare_utils, compare_excel, render_compare_modal)
     elif selected_page == "CONTRACT AUDITOR":
         from modules.page_auditor import render_page_auditor
-        render_page_auditor(api_key, render_audit_modal, get_honest_milestone, apply_badges)
+        render_page_auditor(api_key, render_audit_modal, get_honest_milestone, apply_badges, anim_class)
 if __name__ == '__main__':
     main()
