@@ -322,44 +322,267 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                 st.error(f"Excel generation failed: {ex}")
                 st.stop()
     
+            # ── Derive display metadata from AI response ──────────────────────────
+            year_1 = data.get("year_1", "—")
+            year_2 = data.get("year_2", "—")
+
+            seasons_list = data.get("seasons", [])
+            num_seasons = len(seasons_list)
+            all_rooms: set = set()
+            for _s in seasons_list:
+                for _r in _s.get("rooms", []):
+                    _rn = str(_r.get("room_name", "")).strip()
+                    if _rn:
+                        all_rooms.add(_rn)
+            num_rooms = len(all_rooms) if all_rooms else "—"
+
+            _policy_map = [
+                ("room_rates",       "Room Rates (all seasons)",    True),   # always present
+                ("extra_bed",        "Extra Bed / Extra Person",    False),
+                ("early_bird",       "Early Bird Offer",            False),
+                ("bonus_night",      "Bonus Night Offer",           False),
+                ("wellbeing",        "Wellbeing / Long Stay",       False),
+                ("cancellation",     "Cancellation Policy",         False),
+                ("other_promotions", "Other Promotions",            False),
+            ]
+            _sections_status = []
+            for _key, _label, _force in _policy_map:
+                if _force:
+                    _sections_status.append((_label, bool(seasons_list)))
+                else:
+                    _items = data.get(_key, [])
+                    _changed = any(
+                        str(i.get("diff_summary", "SAME")).strip().upper() != "SAME"
+                        for i in _items
+                    ) if _items else False
+                    _sections_status.append((_label, _changed))
+
+            num_changed_sections = sum(1 for _, _c in _sections_status if _c)
+            total_sections       = len(_sections_status)
+            _file_name           = f"{hotel_name_safe}_Comparison.xlsx"
+            _words               = hotel_name.split()
+            _initials            = "".join(w[0].upper() for w in _words[:2]) if len(_words) >= 2 else hotel_name[:2].upper()
+
+            # ── CSS ───────────────────────────────────────────────────────────────
             st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1));
-                            border: 1px solid rgba(16,185,129,0.3); border-radius: 12px;
-                            padding: 16px 24px; margin: 24px 0; display:flex; align-items:center; gap:12px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></div>
-                    <div style="font-size:14px;font-weight:600;">Analysis complete — your comparison report is ready to download.</div>
-                </div>
+            <style>
+            .cc-success {
+                display:flex; align-items:center; gap:10px;
+                background:rgba(16,185,129,0.06);
+                border:0.5px solid rgba(16,185,129,0.3);
+                border-left:3px solid #10b981;
+                border-radius:0 10px 10px 0;
+                padding:11px 16px; margin-bottom:4px;
+            }
+            .cc-success-dot { width:7px; height:7px; border-radius:50%; background:#10b981; flex-shrink:0; }
+            .cc-success-text { font-size:13px; font-weight:600; color:#10b981; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-meta {
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.12); border-radius:14px;
+                padding:18px 22px; display:flex; align-items:center; gap:18px;
+                margin-top:12px;
+            }
+            .cc-avatar {
+                width:44px; height:44px; border-radius:10px;
+                background:linear-gradient(135deg,#0891b2,#22d3ee);
+                display:flex; align-items:center; justify-content:center;
+                font-size:14px; font-weight:800; color:#fff; flex-shrink:0; letter-spacing:-0.02em;
+                font-family:'Plus Jakarta Sans',sans-serif;
+            }
+            .cc-meta-body { flex:1; min-width:0; }
+            .cc-hotel-name { font-size:15px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .cc-hotel-sub  { font-size:11px; opacity:0.5; margin-top:3px; font-weight:500; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-pills { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+            .cc-pill { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; letter-spacing:0.02em; }
+            .cc-pill-teal { background:rgba(8,145,178,0.1); color:#0891b2; }
+            .cc-pill-gray { background:rgba(128,128,128,0.08); border:0.5px solid rgba(128,128,128,0.2); opacity:0.8; }
+            .cc-vs {
+                display:flex; align-items:center; gap:12px;
+                background:var(--background-color); border:1px solid rgba(128,128,128,0.1);
+                border-radius:10px; padding:12px 18px; flex-shrink:0;
+            }
+            .cc-vs-year { text-align:center; }
+            .cc-vs-lbl { font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; opacity:0.4; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-vs-val { font-family:'JetBrains Mono',monospace; font-size:17px; font-weight:600; margin-top:2px; }
+            .cc-vs-arr { font-size:13px; opacity:0.3; }
+            .cc-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px; }
+            .cc-stat {
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.1); border-radius:10px; padding:14px 16px;
+            }
+            .cc-stat-lbl { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; opacity:0.4; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-stat-val { font-size:26px; font-weight:700; margin-top:4px; letter-spacing:-0.02em; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-stat-sub { font-size:10px; opacity:0.45; margin-top:2px; font-weight:500; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-dl-header {
+                display:flex; align-items:center; gap:12px;
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.12); border-radius:14px 14px 0 0;
+                padding:18px 22px; margin-top:12px; border-bottom:none;
+            }
+            .cc-dl-icon {
+                width:38px; height:38px; border-radius:9px;
+                background:rgba(16,185,129,0.1);
+                display:flex; align-items:center; justify-content:center; flex-shrink:0;
+            }
+            .cc-dl-title { font-size:14px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-dl-sub   { font-size:11px; opacity:0.45; margin-top:2px; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-dl-buttons {
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.12); border-top:none; border-bottom:none;
+                padding:0 22px 16px;
+            }
+            .cc-dl-hint {
+                display:flex; align-items:center; gap:7px;
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.12); border-top:none; border-radius:0 0 14px 14px;
+                padding:10px 22px; font-size:11px; opacity:0.5; font-weight:500;
+                font-family:'Plus Jakarta Sans',sans-serif;
+            }
+            .cc-sections {
+                background:var(--secondary-background-color);
+                border:1px solid rgba(128,128,128,0.12); border-radius:14px;
+                padding:18px 22px; margin-top:12px;
+            }
+            .cc-sec-hdr { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; opacity:0.4; margin-bottom:12px; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-sec-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:0.5px solid rgba(128,128,128,0.08); }
+            .cc-sec-row:last-child { border-bottom:none; }
+            .cc-sec-dot { width:5px; height:5px; border-radius:50%; background:#0891b2; flex-shrink:0; }
+            .cc-sec-name { font-size:13px; font-weight:500; flex:1; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-badge-changed { background:rgba(245,158,11,0.12); color:#b45309; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; }
+            .cc-badge-same    { background:rgba(128,128,128,0.08); opacity:0.6; border:0.5px solid rgba(128,128,128,0.15); padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; }
+            </style>
             """, unsafe_allow_html=True)
-    
-            recommendation = str(data.get("recommendation") or "").strip()
-            if recommendation:
-                st.markdown(
-                    f'<div style="background:var(--secondary-background-color);border-radius:10px;'
-                    f'padding:14px 20px;margin:8px 0 16px;font-size:15px;font-weight:600;color:inherit">'
-                    f'{recommendation}</div>',
-                    unsafe_allow_html=True
-                )
-    
-            col1, col2 = st.columns(2)
-            with col1:
+
+            # ── Success banner ─────────────────────────────────────────────────────
+            st.markdown("""
+            <div class="cc-success">
+                <div class="cc-success-dot"></div>
+                <div class="cc-success-text">Analysis complete — comparison report ready to download</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── Meta card ──────────────────────────────────────────────────────────
+            _pills_html = (
+                f'<div class="cc-pill cc-pill-teal">{total_sections} sections analyzed</div>'
+                f'<div class="cc-pill cc-pill-gray">'
+                f'{"No changes" if num_changed_sections == 0 else f"{num_changed_sections} changes detected"}'
+                f'</div>'
+            )
+            st.markdown(f"""
+            <div class="cc-meta">
+                <div class="cc-avatar">{_initials}</div>
+                <div class="cc-meta-body">
+                    <div class="cc-hotel-name">{hotel_name}</div>
+                    <div class="cc-hotel-sub">Compared 2 contracts &middot; {timestamp}</div>
+                    <div class="cc-pills">{_pills_html}</div>
+                </div>
+                <div class="cc-vs">
+                    <div class="cc-vs-year">
+                        <div class="cc-vs-lbl">Previous</div>
+                        <div class="cc-vs-val">{year_1}</div>
+                    </div>
+                    <div class="cc-vs-arr">&rarr;</div>
+                    <div class="cc-vs-year">
+                        <div class="cc-vs-lbl">New</div>
+                        <div class="cc-vs-val">{year_2}</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── Stats row ──────────────────────────────────────────────────────────
+            _changed_color = "#0891b2" if num_changed_sections > 0 else "inherit"
+            st.markdown(f"""
+            <div class="cc-stats">
+                <div class="cc-stat">
+                    <div class="cc-stat-lbl">Room types</div>
+                    <div class="cc-stat-val">{num_rooms}</div>
+                    <div class="cc-stat-sub">extracted from contract</div>
+                </div>
+                <div class="cc-stat">
+                    <div class="cc-stat-lbl">Seasons</div>
+                    <div class="cc-stat-val">{num_seasons}</div>
+                    <div class="cc-stat-sub">period blocks compared</div>
+                </div>
+                <div class="cc-stat">
+                    <div class="cc-stat-lbl">Sections changed</div>
+                    <div class="cc-stat-val" style="color:{_changed_color};">{num_changed_sections}&thinsp;/&thinsp;{total_sections}</div>
+                    <div class="cc-stat-sub">vs previous contract</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── Download card (header + native buttons + hint) ─────────────────────
+            st.markdown(f"""
+            <div class="cc-dl-header">
+                <div class="cc-dl-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                         fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <polyline points="9 15 12 18 15 15"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="cc-dl-title">{_file_name}</div>
+                    <div class="cc-dl-sub">Excel workbook &middot; Comparison report &middot; {total_sections} sections</div>
+                </div>
+            </div>
+            <div class="cc-dl-buttons">
+            """, unsafe_allow_html=True)
+
+            _col_dl, _col_ca = st.columns([3, 1.5])
+            with _col_dl:
                 st.download_button(
                     "Download Excel Report",
                     data=excel_bytes,
-                    file_name="Contract_Comparison.xlsx",
+                    file_name=_file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                     use_container_width=True,
                     key="download_compare_report_btn"
                 )
-                st.caption("In Google Sheets → File → Import → Upload .xlsx")
-    
-            with col2:
-                if st.button("Compare Another", use_container_width=True, key="compare_another_btn"):
+            with _col_ca:
+                if st.button("Compare another", use_container_width=True, key="compare_another_btn"):
                     st.session_state.cc_started = False
                     st.session_state.cc_review_mode = False
                     st.session_state.cc_report_ready = False
                     st.session_state.cc_extracted_data = None
                     st.rerun()
+
+            st.markdown("""</div>
+            <div class="cc-dl-hint">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                To open in Google Sheets: File &rarr; Import &rarr; Upload .xlsx
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── Report contents list ────────────────────────────────────────────────
+            _rows_html = ""
+            for _label, _changed in _sections_status:
+                _badge = (
+                    '<span class="cc-badge-changed">Updated</span>' if _changed
+                    else '<span class="cc-badge-same">Same</span>'
+                )
+                _rows_html += f"""
+                <div class="cc-sec-row">
+                    <div class="cc-sec-dot"></div>
+                    <div class="cc-sec-name">{_label}</div>
+                    {_badge}
+                </div>"""
+
+            st.markdown(f"""
+            <div class="cc-sections">
+                <div class="cc-sec-hdr">Report contents</div>
+                {_rows_html}
+            </div>
+            <br>
+            """, unsafe_allow_html=True)
     
         st.stop()
     
