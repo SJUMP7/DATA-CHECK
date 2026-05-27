@@ -99,25 +99,43 @@
         }
         button[kind="secondary"]:hover { border- opacity: 0.85;  }
 
+        /* ── Sidebar Labels & History ── */
+        .nav-label, .sb-hist-label {
+            font-size: 10px; font-weight: 700; color: var(--text-color); opacity: 0.6;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; margin-top: 10px;
+        }
+        .sb-hist-item {
+            padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s; margin-bottom: 4px;
+        }
+        .sb-hist-item:hover { background: var(--background-color); }
+        .sb-hist-name { font-size: 12px; font-weight: 600; color: var(--text-color); opacity: 0.9; }
+        .sb-hist-meta { font-size: 10px; color: var(--text-color); opacity: 0.6; margin-top: 4px; }
+        .sb-hist-empty { font-size: 11px; color: var(--text-color); opacity: 0.6; padding-left: 4px; }
+
         /* ── Sidebar Navigation Buttons ── */
         section[data-testid="stSidebar"] button[kind="primary"],
         section[data-testid="stSidebar"] button[kind="secondary"] {
             width: 100% !important; text-align: left !important;
-            justify-content: flex-start !important; padding: 10px 14px !important;
+            justify-content: flex-start !important; padding: 10px 12px !important;
             border-radius: 10px !important; font-size: 13px !important; font-weight: 600 !important;
             border: none !important; box-shadow: none !important; margin-bottom: 4px !important;
             transition: all 0.15s ease !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
         }
         section[data-testid="stSidebar"] button[kind="primary"] {
-            background: rgba(13,148,136,0.08) !important;
-            color: #0d9488 !important;
+            background: rgba(8,145,178,0.1) !important;
+            color: #0891b2 !important;
+        }
+        section[data-testid="stSidebar"] button[kind="primary"] * {
+            color: #0891b2 !important;
         }
         section[data-testid="stSidebar"] button[kind="secondary"] {
             background: transparent !important;
-             opacity: 0.95; font-weight: 500 !important;
+            color: var(--text-color) !important;
+            opacity: 0.7 !important;
         }
         section[data-testid="stSidebar"] button[kind="secondary"]:hover {
             background: var(--background-color) !important; 
+            opacity: 1 !important;
         }
 
         /* ── Settings Profile Area ── */
@@ -329,31 +347,50 @@
         .anim-delay-3 { animation-delay: 0.28s; }
 
         /* ── App Selector Sidebar Header ───────────────────────────── */
-        .app-selector-header-container { background: var(--background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important; border-radius: 12px; padding: 11px 14px; margin-top: 28px; margin-bottom: 20px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
-        .app-selector-header-container:hover { background: var(--background-color) !important; border-color: rgba(128, 128, 128, 0.2) !important; }
-        .app-selector-header { display: flex; align-items: center; gap: 10px; width: 100%; }
-        .logo-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 12px; color: #ffffff !important; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.08) !important; }
-        .da-logo { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; }
-        .cc-logo { background: linear-gradient(135deg, #0891b2, #22d3ee) !important; }
+        .app-selector-header-container { background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.15) !important; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 32px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
+        .app-selector-header-container:hover { background: var(--background-color) !important; border-color: rgba(128, 128, 128, 0.25) !important; }
+        .app-selector-header { display: flex; align-items: center; gap: 12px; width: 100%; }
+        .logo-circle { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 13px; color: #ffffff !important; flex-shrink: 0; box-shadow: none !important; }
+        .da-logo { background: #8b5cf6 !important; }
+        .cc-logo { background: #6366f1 !important; }
         .app-selector-header .text-block { flex-grow: 1; text-align: left; line-height: 1.2; }
         .app-selector-header .main-title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700; font-size: 13px; letter-spacing: -0.01em;  }
         .app-selector-header .sub-title { font-size: 10px;  opacity: 0.85; font-weight: 500; margin-top: 1px; }
         .app-selector-header .chevron { font-size: 10px;  opacity: 0.3; flex-shrink: 0; }
 
         /* ── Invisible Overlay Buttons via Sibling Selector ────────── */
+        /* Pull ALL popup DOM elements out of flex flow → zero height → no layout jump */
+        div[data-testid="stElementContainer"]:has(.app-popup-card),
+        div[data-testid="stElementContainer"]:has(.marker-popup-da),
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc),
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) {
+            position: absolute !important; width: 0 !important; height: 0 !important;
+            padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+        /* Also pull sibling button containers out of flow (they still contain fixed-position buttons) */
+        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] {
+            position: absolute !important; width: 0 !important; height: 0 !important;
+            padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+        /* Zero out the stMarkdownContainer inside the popup card wrapper */
+        div[data-testid="stElementContainer"]:has(.app-popup-card) [data-testid="stMarkdownContainer"] {
+            height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+
         /* 1. Header Toggle */
         div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] { margin-top: -96px !important; position: relative; z-index: 10; margin-bottom: 20px; }
         div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] button { background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; width: 100% !important; height: 80px !important; cursor: pointer !important; }
         /* 2. Popup Item DA */
-        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 154px !important; left: 366px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 110px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; }
         /* 3. Popup Item CC */
-        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 218px !important; left: 366px !important; width: 278px !important; height: 58px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 178px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; }
         /* 4. Backdrop Close */
-        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 999990 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; }
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 999990 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; }
 
         /* ── Popup Card ────────────────────────────────────────────── */
-        .app-popup-card { position: fixed; top: 96px; left: 352px; width: 306px; background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.2) !important; border-radius: 14px; padding: 14px; box-shadow: 0 20px 48px rgba(0,0,0,0.12) !important; z-index: 999995; opacity: 0; animation: popupSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-        @keyframes popupSlideIn { 0% { opacity:0; transform:translateY(-10px) scale(0.96); } 100% { opacity:1; transform:translateY(0) scale(1); } }
+        .app-popup-card { position: fixed; top: 58px; left: 270px; width: 310px; background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.15) !important; border-radius: 14px; padding: 14px; box-shadow: 0 8px 40px rgba(0,0,0,0.14) !important; z-index: 999995; }
         .popup-header { display: flex; align-items: center; gap: 9px; padding: 3px 5px 10px 5px; }
         .popup-header .building-icon { font-size: 15px; color: #0d9488 !important; }
         .popup-header .header-text { line-height: 1.2; text-align: left; }
