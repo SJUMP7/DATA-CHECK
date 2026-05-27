@@ -16,8 +16,8 @@
 
         /* ── App Background ────────────────────────────────────────── */
         .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-            background: radial-gradient(circle at top right, #1f2937 0%, #0b0f19 100%) !important;
-            color: #f8fafc !important;
+            background: radial-gradient(circle at top right, var(--secondary-background-color) 0%, var(--background-color) 100%) !important;
+            color: var(--text-color) !important;
         }
         .block-container { padding: 2rem 2.5rem 4rem !important; max-width: 1100px !important; }
         [data-testid="stStatusWidget"] { display: none !important; }
@@ -66,7 +66,7 @@
         /* ── File Uploader ─────────────────────────────────────────── */
         div[data-testid="stFileUploader"] { width: 100% !important; }
         div[data-testid="stFileUploader"] > section {
-            background: rgba(255, 255, 255, 0.02) !important; border: 1.5px dashed rgba(255, 255, 255, 0.15) !important;
+            background: rgba(128, 128, 128, 0.05) !important; border: 1.5px dashed rgba(128, 128, 128, 0.3) !important;
             border-radius: 12px !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         div[data-testid="stFileUploader"] > section:hover {
@@ -206,20 +206,20 @@
 
         /* ── Cards & Containers (Glassmorphism) ─────────────────────────────────────────────────── */
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker) {
-            background-color: rgba(255, 255, 255, 0.03) !important; 
-            background: rgba(255, 255, 255, 0.03) !important;
+            background-color: var(--secondary-background-color) !important; 
+            background: var(--secondary-background-color) !important;
             backdrop-filter: blur(16px) !important; -webkit-backdrop-filter: blur(16px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(128, 128, 128, 0.15) !important;
             border-radius: 16px !important; padding: 24px 28px !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1) !important;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; margin-bottom: 14px;
         }
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker):hover {
             border-color: rgba(34, 211, 238, 0.4) !important;
             box-shadow: 0 12px 40px rgba(34, 211, 238, 0.25) !important;
             transform: translateY(-4px) !important;
-            background: rgba(255, 255, 255, 0.06) !important;
-            background-color: rgba(255, 255, 255, 0.06) !important;
+            background: var(--background-color) !important;
+            background-color: var(--background-color) !important;
         }
         /* Make inner Streamlit layout containers of glass card completely transparent */
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker) div {
@@ -276,7 +276,7 @@
         .output-section th { background: var(--background-color) !important;  opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; font-size: 10px; padding: 11px 14px; border-bottom: 1px solid rgba(128, 128, 128, 0.2) !important; }
         .output-section td { padding: 11px 14px; border-bottom: 1px solid rgba(128, 128, 128, 0.1) !important; vertical-align: top;  line-height: 1.6; }
         .output-section tr:last-child td { border-bottom: none; }
-        .output-section tr:nth-child(even) td { background: #fafafa; }
+        .output-section tr:nth-child(even) td { background: rgba(128, 128, 128, 0.05) !important; }
         .output-section code { background: rgba(220,38,38,0.05) !important; color: #dc2626 !important; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; border: 1px solid rgba(220,38,38,0.12) !important; }
 
         /* ── Score Card ────────────────────────────────────────────── */
