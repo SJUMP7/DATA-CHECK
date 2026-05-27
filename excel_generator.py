@@ -102,12 +102,15 @@ def generate_comparison_excel(data: dict) -> bytes:
     year_2     = data.get("year_2", "25/26")
 
     # Header Row
-    _cell(ws, row, 1, hotel_name, fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
-    _cell(ws, row, 2, year_1,     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
-    _cell(ws, row, 3, year_2,     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
-    _cell(ws, row, 4, "%",        fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
-    _cell(ws, row, 5, "",         fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
-    _cell(ws, row, 6, "",         fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    hotel_name_upper = str(hotel_name).upper()
+    year_1_upper     = str(year_1).upper()
+    year_2_upper     = str(year_2).upper()
+    _cell(ws, row, 1, hotel_name_upper, fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 2, year_1_upper,     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 3, year_2_upper,     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 4, "%",              fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 5, "",               fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 6, "",               fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
     row += 1
 
     seasons = data.get("seasons", [])
@@ -117,12 +120,13 @@ def generate_comparison_excel(data: dict) -> bytes:
         p2 = season.get("period_2") or ""
 
         # Period Header (Blue)
-        _cell(ws, row, 1, "", fill=_BLUE, border=_THIN)
-        _cell(ws, row, 2, p1, fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
-        _cell(ws, row, 3, p2, fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
-        _cell(ws, row, 4, "", fill=_BLUE, border=_THIN)
-        _cell(ws, row, 5, "", fill=_BLUE, border=_THIN)
-        _cell(ws, row, 6, season_name, fill=_YELLOW if season_name else _LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 1, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 2, str(p1).upper(),         fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 3, str(p2).upper(),         fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 4, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 5, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 6, str(season_name).upper() if season_name else "",
+              fill=_YELLOW if season_name else _LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         row += 1
 
         # Conditions for the season can go to Col F on the first room row
@@ -134,7 +138,8 @@ def generate_comparison_excel(data: dict) -> bytes:
         
         rooms = season.get("rooms") or []
         for i, rm in enumerate(rooms):
-            name = rm.get("room_name") or ""
+            # Room name: uppercase
+            name = str(rm.get("room_name") or "").upper()
             p1_val = rm.get("price_1", 0)
             p2_val = rm.get("price_2", 0)
             
@@ -146,10 +151,11 @@ def generate_comparison_excel(data: dict) -> bytes:
 
             if price_1 is not None and price_2 is not None:
                 diff_amt = price_2 - price_1
-                if price_1 > 0:
-                    diff_pct = (price_2 - price_1) / price_1
-                elif price_1 == 0 and price_2 > 0:
-                    diff_pct = 1.0 # 100%
+                # สูตรที่ถูกต้อง: (A2-A1)/A2 คือ ใช้ราคาปีใหม่ (price_2) เป็นตัวหาร
+                if price_2 > 0:
+                    diff_pct = (price_2 - price_1) / price_2
+                elif price_2 == 0 and price_1 > 0:
+                    diff_pct = -1.0  # -100%
                 else:
                     diff_pct = 0.0
                 diff_amt_disp = diff_amt
@@ -216,7 +222,7 @@ def generate_comparison_excel(data: dict) -> bytes:
         items = data.get(key, [])
         if not items: return
         
-        _cell(ws, row, 1, title, fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
         row += 1
@@ -269,7 +275,7 @@ def generate_comparison_excel(data: dict) -> bytes:
         items = data.get(key, [])
         if not items: return
         
-        _cell(ws, row, 1, title, fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
         row += 1
@@ -324,14 +330,14 @@ def generate_comparison_excel(data: dict) -> bytes:
         row += 1
 
     # Extra Bed is stacked in the image
-    _build_stacked_section("Extra bed / Extra person", "extra_bed")
+    _build_stacked_section("EXTRA BED / EXTRA PERSON", "extra_bed")
     
     # Early Bird, Bonus Night, Wellbeing, Cancellation, Other Promotions are side-by-side
-    _build_sidebyside_section("Early Bird Offer", "early_bird")
+    _build_sidebyside_section("EARLY BIRD OFFER", "early_bird")
     _build_sidebyside_section("BONUS NIGHT OFFER", "bonus_night")
     _build_sidebyside_section("WELLBEING SANCTUARY POOL SUITE LONG STAY BENEFITS", "wellbeing")
-    _build_sidebyside_section("Cancellation", "cancellation")
-    _build_sidebyside_section("Other Promotions / Conditions", "other_promotions")
+    _build_sidebyside_section("CANCELLATION", "cancellation")
+    _build_sidebyside_section("OTHER PROMOTIONS / CONDITIONS", "other_promotions")
 
     buf = BytesIO()
     wb.save(buf)

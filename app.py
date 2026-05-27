@@ -360,7 +360,11 @@ def main():
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("บันทึก", type="primary", use_container_width=True, key="settings_save_btn"):
-                    if api_key_input: save_key(api_key_input)
+                    if api_key_input:
+                        save_key(api_key_input)
+                        # ล้าง Cache ทั้งหมดเพื่อให้ Key ใหม่ถูกใช้ทันที
+                        st.cache_data.clear()
+                        st.cache_resource.clear()
                     st.rerun()
             with col2:
                 if st.button("ยกเลิก", type="secondary", use_container_width=True, key="settings_cancel_btn"):
