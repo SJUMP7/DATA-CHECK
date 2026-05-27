@@ -70,32 +70,6 @@ def _clean_price(val):
     return None
 
 
-def _fmt_nums(text: str) -> str:
-    """Add comma separators to numbers >= 1,000 inside text strings.
-    Skips numbers that follow date-related words (in, on, date, dates, year, etc.)
-    because those are likely years, not prices.
-    e.g. '1500 THB' -> '1,500 THB'
-         'in 2025'  -> 'in 2025'  (unchanged)
-         'dates in 2025-2026' -> unchanged
-    """
-    import re
-    # Pattern to detect date-context keywords immediately before the number
-    _DATE_PREFIX = re.compile(
-        r'\b(?:date[s]?|in|on|year[s]?|by|from|until|since|period|'
-        r'booking|staying|check-?in|check-?out|arrival|departure|valid|effective)\s*$',
-        re.IGNORECASE
-    )
-
-    def _replace(m):
-        # Check the text *before* this match for date-related words
-        prefix = text[:m.start()]
-        if _DATE_PREFIX.search(prefix):
-            return m.group(0)          # looks like a year — leave as-is
-        return f"{int(m.group(0)):,}"  # price — add comma
-
-    return re.sub(r'\b\d{4,}\b', _replace, text)
-
-
 def generate_comparison_excel(data: dict) -> bytes:
     """
     สร้าง Excel workbook จาก JSON ที่ได้จาก Gemini Compare Contract
@@ -193,11 +167,8 @@ def generate_comparison_excel(data: dict) -> bytes:
                 diff_pct_disp = "-"
 
             _cell(ws, row, 1, name, font=_BLACK_NORM, align=_LEFT, border=_THIN)
-            # Write as int so #,##0 format shows commas correctly (1500 → 1,500)
-            p1_write = int(price_1) if price_1 is not None and price_1 == int(price_1) else price_1_disp
-            p2_write = int(price_2) if price_2 is not None and price_2 == int(price_2) else price_2_disp
-            _cell(ws, row, 2, p1_write, font=_BLACK_NORM, align=_CENTER, border=_THIN)
-            _cell(ws, row, 3, p2_write, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            _cell(ws, row, 2, price_1_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            _cell(ws, row, 3, price_2_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
             if price_1 is not None: ws.cell(row=row, column=2).number_format = '#,##0'
             if price_2 is not None: ws.cell(row=row, column=3).number_format = '#,##0'
 
@@ -263,12 +234,9 @@ def generate_comparison_excel(data: dict) -> bytes:
             c1_text, c1_notes = _extract_notes(c1_raw)
             c2_text, c2_notes = _extract_notes(c2_raw)
             all_notes = c1_notes + [n for n in c2_notes if n not in c1_notes]
-            # ใส่ลูกน้ำในตัวเลข >= 1,000 ที่อยู่ในข้อความ
-            c1_text = _fmt_nums(c1_text)
-            c2_text = _fmt_nums(c2_text)
             
             # Contract 1
-            _cell(ws, row, 1, f"CONTRACT {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+            _cell(ws, row, 1, f"Contract {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
             for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
             ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
             row += 1
@@ -280,7 +248,7 @@ def generate_comparison_excel(data: dict) -> bytes:
             row += 1
             
             # Contract 2
-            _cell(ws, row, 1, f"CONTRACT {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+            _cell(ws, row, 1, f"Contract {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
             for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
             ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
             row += 1
@@ -313,15 +281,15 @@ def generate_comparison_excel(data: dict) -> bytes:
         row += 1
         
         # Headers
-        _cell(ws, row, 1, f"CONTRACT {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 1, f"Contract {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         _cell(ws, row, 2, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
         
-        _cell(ws, row, 3, "COMPARISON / CHANGES", fill=PatternFill("solid", fgColor="D0E0F0"), font=Font(color="000080", bold=True, name="Calibri", size=10), align=_CENTER, border=_THIN)
+        _cell(ws, row, 3, "Comparison / Changes", fill=PatternFill("solid", fgColor="D0E0F0"), font=Font(color="000080", bold=True, name="Calibri", size=10), align=_CENTER, border=_THIN)
         _cell(ws, row, 4, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=4)
 
-        _cell(ws, row, 5, f"CONTRACT {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 5, f"Contract {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         _cell(ws, row, 6, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
         row += 1
@@ -334,9 +302,6 @@ def generate_comparison_excel(data: dict) -> bytes:
             c1_text, c1_notes = _extract_notes(c1_raw)
             c2_text, c2_notes = _extract_notes(c2_raw)
             all_notes = c1_notes + [n for n in c2_notes if n not in c1_notes]
-            # ใส่ลูกน้ำในตัวเลข >= 1,000 ที่อยู่ในข้อความ
-            c1_text = _fmt_nums(c1_text)
-            c2_text = _fmt_nums(c2_text)
 
             _cell(ws, row, 1, c1_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
             _cell(ws, row, 2, "", border=_THIN)
