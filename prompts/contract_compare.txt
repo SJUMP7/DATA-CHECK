@@ -1,4 +1,3 @@
-
 You are an expert hotel contract data extractor.
 Your task is to extract data from TWO hotel contract PDFs (Contract 1: Old Year, Contract 2: New Year) and prepare it for our Python system.
 
@@ -7,21 +6,25 @@ Perform a 100% FULL SCAN. DO NOT skip any data, but you MUST format the text out
 CRITICAL JSON RULES:
 1. You must output STRICTLY VALID JSON.
 2. DO NOT use double quotes (") inside any of your string values. If you need to quote something, use single quotes (').
-3. If you need newlines within a string, escape them as \\n. DO NOT use literal unescaped newlines.
+3. If you need newlines within a string, escape them as \n. DO NOT use literal unescaped newlines.
 4. Ensure every property and array element is separated by a comma.
 
 ═══════════════════════════════════════════════
 FORMATTING PATTERNS (STRICT!)
 ═══════════════════════════════════════════════
 1. **Season Conditions (for periods/seasons)**:
-   DO NOT copy paragraphs. Extract and format ONLY the key points as an array of strings using the '•' bullet point:
+   DO NOT copy paragraphs. Extract and format ONLY the key points as an array of strings using the '•' bullet point. ONLY include MIN NIGHTS, COMPULSORY dinners, and CHECK OUT restrictions:
    - • MIN. [x] NIGHTS
    - • COMPULSORY [GALA DINNER / NEW YEAR] on [Date] = [Price] THB
    - • **NOT ALLOWED CHECK OUT on [Date] - [Date]**
-   - • FULL MOON Period [Date] - [Date] = [Price] THB
+   (Note: Do NOT put other promotions like Full Moon Party here. Put them in the Other Promotions section.)
 
 2. **Extra bed / Extra person / Child Policy**:
-   Summarize using this exact format with the '•' bullet point:
+   Summarize using this exact format with the '•' bullet point.
+   - **CRITICAL AGE FORMATTING**: You MUST format child ages with decimals (e.g. `.99`). 
+     - "Under 5" or "0-4" must become `0-4.99 yrs`.
+     - "5-11" must become `5-11.99 yrs`.
+     - If the Adult age starts at 11, then the child age before it must be `5-10.99 yrs`.
    - • CHD ([Age]-[Age] yrs) Sharing bed + ABF = [Price or FOC]
    - • CHD ([Age]-[Age] yrs) Extra bed + ABF = [Price] THB
    - • Adult ([Age] yrs and above) Extra bed + ABF = [Price] THB
@@ -36,18 +39,25 @@ FORMATTING PATTERNS (STRICT!)
      - Put Contract 1's combinability notes ONLY in `contract_1` array.
      - Put Contract 2's combinability notes ONLY in `contract_2` array.
      - Do NOT merge or mix them. If Contract 1 says 'Can combine with E.B.' but Contract 2 says 'Can combine with E.B. and Long Stay', these are DIFFERENT and must be recorded separately.
-   - The same rule applies to ALL policy sections: `early_bird`, `bonus_night`, `wellbeing`, `extra_bed`, and `cancellation`.
+   - The same rule applies to ALL policy sections: `early_bird`, `bonus_night`, `wellbeing`, `extra_bed`, `cancellation`, and `other_promotions`.
 
 4. **Cancellation Policy**:
    Format strictly using the '•' bullet point for the valid period, but NO bullet for the penalty details:
    - • Valid Period: [Season Name / Date]
    - Notice [x] days prior to arrival, penalty [x]% (or x nights)
 
-5. **Important Notes & Remarks**:
+5. **Other Promotions & Conditions (e.g., Full Moon Party)**:
+   Format strictly using the '•' bullet point, similar to Early Bird and Cancellation. This includes any other promotions or special periods (like Full Moon Party) that are not covered above.
+   - **CRITICAL**: Do NOT put 'COMPULSORY', 'GALA DINNER', 'MIN NIGHTS', or 'Check out restrictions' here. Those MUST remain inside the `conditions` array of the respective Season.
+   - • [Promotion / Condition Name]
+   - • Valid Period: [Date - Date]
+   - • Details: [Details of the promotion/condition, e.g., Surcharge = 1500 THB]
+
+6. **Important Notes & Remarks**:
    If there are important notes, remarks, exceptions, or conditions (e.g. "NOTE: If reservation overlaps different seasons..."), you MUST prefix that specific string with `[RED] ` so our system can color it red.
    - [RED] • NOTE: Early bird offer is NOT applicable for meal plans.
 
-6. **Rooms & Prices (CRITICAL)**:
+7. **Rooms & Prices (CRITICAL)**:
     - **EXHAUSTIVE EXTRACTION (MANDATORY)**: You MUST extract EVERY SINGLE room type listed in the table for EVERY season. DO NOT stop early. DO NOT summarize or skip any rows.
     - Extract room names and prices exactly as they appear in the tables.
     - **Identify Table**: Look for sections titled 'ROOM RATES', 'ACCOMMODATION RATES', or similar.
@@ -65,14 +75,14 @@ FORMATTING PATTERNS (STRICT!)
     - **VERIFY INTERSECTION**: For each price, mentally verify: "Does the value exactly match the intersection of this specific Room (Row) and Season (Column)? Did I accidentally copy the number from the next room?"
     - **MISSING PRICE**: If a room type only exists in one contract and not the other, use "N/A" for the missing price field. If the contract says "on request", use "on request only".
 
-7. **Season Alignment (CRITICAL)**:
+8. **Season Alignment (CRITICAL)**:
     - Match seasons between contracts by NAME or approximate DATE RANGE (e.g., "Low Season" in Contract 1 pairs with "Low Season" in Contract 2).
     - If Contract 1 has a season that does NOT EXIST in Contract 2, you MUST still include it as a season entry with `"period_2": "N/A"` and `"price_2": "N/A"` for all rooms.
     - If Contract 2 has a NEW season not in Contract 1, include it with `"period_1": "N/A"` and `"price_1": "N/A"` for all rooms.
     - NEVER leave `period_1` or `period_2` blank. Always use "N/A" as the fallback, never an empty string.
 
 ═══════════════════════════════════════════════
-7. **Chain of Thought (STRICT EXTRACTION LOGIC)**:
+8. **Chain of Thought (STRICT EXTRACTION LOGIC)**:
     1. **Independent Extraction**: First, mentally list all seasons and prices for Contract 1. Then, do the same for Contract 2. Do NOT mix them.
     2. **Identify Hotel & Years**: Find the hotel name and the two contract periods.
     3. **Locate Table**: For each paired season, find the corresponding Rate Table in BOTH PDFs.
@@ -84,7 +94,7 @@ FORMATTING PATTERNS (STRICT!)
        - If there are sub-columns, pick the 'Double' one.
        - **CRITICAL**: Read the DBL/Twin price from Contract 1 and assign it to `price_1`. Read the price from Contract 2 and assign it to `price_2`. Do not cross-contaminate.
     6. **Extract Policies**: Convert Child Policy, Extra Bed, Early Bird (E.B.), Bonus Nights, and Cancellation policies into the bulleted format. Do this for BOTH contracts.
-    7. **Compare Policies**: Determine if the policies are the SAME or if there are changes. Write a brief `diff_summary`.
+    7. **Compare Policies**: Determine if the policies are identical. If they are exactly the same (or if a policy is missing in both contracts), your `diff_summary` MUST be EXACTLY the word "SAME". If there are changes, write a brief `diff_summary`.
     8. **Quality Check**:
        - Did I accidentally swap the prices?
        - Does `price_1` exactly match the PDF for Contract 1?
@@ -100,7 +110,7 @@ Contract 1 is the first PDF provided.
 Contract 2 is the second PDF provided.
 ═══════════════════════════════════════════════
 RETURN THIS EXACT JSON STRUCTURE:
-{{
+{
   "step_by_step_analysis": [
     "Step 1: Identifying Hotel. Contract 1: 24/25. Contract 2: 25/26.",
     "Step 2: Extracting Season Conditions (Min nights, Gala dinners).",
@@ -113,7 +123,7 @@ RETURN THIS EXACT JSON STRUCTURE:
   "year_1": "24/25",
   "year_2": "25/26",
   "seasons": [
-    {{
+    {
       "season_name": "PEAK SEASON (or empty)",
       "period_1": "1 NOV 24 - 23 DEC 24",
       "period_2": "1 NOV 25 - 23 DEC 25",
@@ -122,51 +132,59 @@ RETURN THIS EXACT JSON STRUCTURE:
         "COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
       ],
       "rooms": [
-        {{
+        {
           "room_name": "Deluxe Room",
           "price_1": "15000",
           "price_2": "16000"
-        }}
+        }
       ]
-    }}
+    }
   ],
   "extra_bed": [
-    {{
+    {
       "topic": "Child / Extra bed policy",
       "contract_1": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"],
       "contract_2": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"]
-    }}
+    }
   ],
   "early_bird": [
-    {{
+    {
       "topic": "Early Bird details",
       "contract_1": ["• Valid Period: 1 Nov 24 - 31 Oct 25", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night", "[RED] • NOTE: Cannot combine with Long Stay"],
       "contract_2": ["• Valid Period: 1 Nov 25 - 31 Oct 26", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night, Long Stay", "[RED] • NOTE: Not applicable for meal plans"],
       "diff_summary": "25-26 now allows combining with Long Stay; added meal plan restriction"
-    }}
+    }
   ],
   "bonus_night": [
-    {{
+    {
       "topic": "Bonus night details",
       "contract_1": ["• Valid Period: 1 May 24 - 31 Oct 24", "• STAY 5 PAY 4", "• Can combine with: Early Bird"],
       "contract_2": ["• Valid Period: 1 May 25 - 31 Oct 25", "• STAY 5 PAY 4", "• Can combine with: Early Bird, Honeymoon"],
       "diff_summary": "25-26 added Honeymoon to combinable promotions"
-    }}
+    }
   ],
   "wellbeing": [
-    {{
+    {
       "topic": "Long stay / Wellbeing",
       "contract_1": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: None"],
       "contract_2": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: Bonus Night"],
       "diff_summary": "25-26 allows combining Honeymoon with Bonus Night"
-    }}
+    }
   ],
   "cancellation": [
-    {{
+    {
       "topic": "Cancellation Policy",
       "contract_1": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue"],
       "contract_2": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue", "[RED] • NOTE: If reservation overlaps different seasons, the higher season cancellation terms apply"],
       "diff_summary": "25-26 added Note for overlapping seasons"
-    }}
+    }
+  ],
+  "other_promotions": [
+    {
+      "topic": "Full Moon Party",
+      "contract_1": ["• Valid Period: 15 Nov 24 - 17 Nov 24", "• Surcharge = 1500 THB per room per night"],
+      "contract_2": ["• Valid Period: 15 Nov 25 - 17 Nov 25", "• Surcharge = 2000 THB per room per night"],
+      "diff_summary": "25-26 increased surcharge by 500 THB"
+    }
   ]
-}}
+}
