@@ -171,6 +171,7 @@ def main():
         return ""
 
     def save_key(k):
+        k = k.strip() if k else ""
         try:
             lines = []
             if os.path.exists(".env"):
@@ -181,13 +182,13 @@ def main():
             new_lines = []
             for line in lines:
                 if re.match(r'^\s*GEMINI_KEY\s*=', line):
-                    new_lines.append(f"GEMINI_KEY={k.strip()}\n")
+                    new_lines.append(f"GEMINI_KEY={k}\n")
                     key_found = True
                 else:
                     new_lines.append(line)
 
             if not key_found:
-                new_lines.append(f"GEMINI_KEY={k.strip()}\n")
+                new_lines.append(f"GEMINI_KEY={k}\n")
 
             with open(".env", "w", encoding="utf-8") as f:
                 f.writelines(new_lines)
@@ -306,7 +307,7 @@ def main():
                 st.rerun()
 
         # ─── Navigation Button Page Routing ───
-        st.markdown('<div class="nav-label">NAVIGATION</div>', unsafe_allow_html=True)
+        st.markdown('<div class="nav-label">Navigation</div>', unsafe_allow_html=True)
 
         if "selected_page" not in st.session_state:
             st.session_state.selected_page = "CONTRACT AUDITOR"
@@ -338,6 +339,22 @@ def main():
         saved_key = load_key()
         api_key = saved_key
 
+        # Validate และ cache ผลลัพธ์ใน session_state
+        _last_validated_key = st.session_state.get("_validated_key", "")
+        if saved_key and saved_key != _last_validated_key:
+            # Key เปลี่ยน → validate ใหม่
+            _is_valid, _status_msg = validate_api_key(saved_key)
+            st.session_state["_api_valid"] = _is_valid
+            st.session_state["_api_status_msg"] = _status_msg
+            st.session_state["_validated_key"] = saved_key
+        elif not saved_key:
+            st.session_state["_api_valid"] = False
+            st.session_state["_api_status_msg"] = "No API Key"
+            st.session_state["_validated_key"] = ""
+
+        _api_valid = st.session_state.get("_api_valid", False)
+        _api_status_msg = st.session_state.get("_api_status_msg", "")
+
         @st.dialog("Settings")
         def settings_dialog():
             st.markdown("""
@@ -355,70 +372,58 @@ def main():
 
             st.markdown('<div class="api-label">GEMINI API KEY</div>', unsafe_allow_html=True)
             api_key_input = st.text_input("GEMINI API KEY", type="password", value=load_key() or "", label_visibility="collapsed")
-            st.markdown('<div class="caption-text">Key ถูกบันทึกลงไฟล์ .env เฉพาะในเครื่อง (Local) เพื่อความปลอดภัย</div>', unsafe_allow_html=True)
+            
+            if is_cloud_key():
+                st.markdown(
+                    '<div class="caption-text" style="color:#f59e0b;">'
+                    '⚠️ ระบบใช้ Key จาก Cloud Secrets — การเปลี่ยนแปลงที่นี่จะไม่มีผล</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    '<div class="caption-text">Key ถูกบันทึกลงไฟล์ .env เฉพาะในเครื่อง (Local) เพื่อความปลอดภัย</div>',
+                    unsafe_allow_html=True
+                )
 
-            col1, col2 = st.columns(2)
+            _msg_placeholder = st.empty()
+
+            col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("บันทึก", type="primary", use_container_width=True, key="settings_save_btn"):
-                    if api_key_input:
-                        save_key(api_key_input)
-                        # ล้าง Cache ทั้งหมดเพื่อให้ Key ใหม่ถูกใช้ทันที
-                        st.cache_data.clear()
-                        st.cache_resource.clear()
-                    st.rerun()
+                    if api_key_input and api_key_input != load_key():
+                        with st.spinner("กำลังตรวจสอบ Key..."):
+                            _ok, _msg = validate_api_key(api_key_input)
+                        if _ok:
+                            save_key(api_key_input)
+                            st.cache_data.clear()
+                            st.cache_resource.clear()
+                            for k in ["_api_valid", "_api_status_msg", "_validated_key"]:
+                                st.session_state.pop(k, None)
+                            st.rerun()
+                        else:
+                            _msg_placeholder.error(f"Key ไม่ถูกต้อง: {_msg}")
+                    elif not api_key_input:
+                        _msg_placeholder.warning("กรุณากรอก API Key")
+                    else:
+                        st.rerun()
             with col2:
                 if st.button("ยกเลิก", type="secondary", use_container_width=True, key="settings_cancel_btn"):
                     st.rerun()
-
-        # ─── Settings & Profile Area ───
-        st.markdown("""
-            <style>
-            /* Pin Settings to Bottom */
-            [data-testid="stSidebarUserContent"] { position: relative !important; padding-bottom: 140px !important; }
-            
-            /* Target ONLY the nested vertical block for settings, pinning it to the bottom */
-            [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"]:has(.marker-settings-bottom) {
-                position: absolute !important;
-                bottom: 20px !important;
-                left: 0.75rem !important;
-                right: 0.75rem !important;
-                width: auto !important;
-                z-index: 50 !important;
-            }
-            
-            /* Hide the markers themselves so they take up 0 space */
-            .marker-settings-bottom, .marker-settings-btn {
-                display: none !important;
-            }
-            
-            /* Force perfect left alignment on the settings button */
-            [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"]:has(.marker-settings-bottom) button {
-                justify-content: flex-start !important;
-                padding-left: 14px !important;
-                background-color: var(--secondary-background-color) !important;
-                border: 1px solid rgba(128, 128, 128, 0.1) !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-        with st.container():
-            st.markdown('<div class="marker-settings-bottom"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="marker-settings-btn"></div>', unsafe_allow_html=True)
-
-            if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
-                settings_dialog()
-
-            if saved_key:
-                st.markdown('<div class="api-status api-connected"><div class="api-status-dot"></div>API Connected</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="api-status api-disconnected"><div class="api-status-dot"></div>API Not Connected</div>', unsafe_allow_html=True)
+            with col3:
+                if st.button("ล้าง Key", type="secondary", use_container_width=True, key="settings_clear_btn"):
+                    save_key("")
+                    for k in ["_api_valid", "_api_status_msg", "_validated_key"]:
+                        st.session_state.pop(k, None)
+                    st.cache_data.clear()
+                    st.cache_resource.clear()
+                    st.rerun()
 
         # ─── Recent History Sidebar ────────────────────────────────────────────
         if active_app == "CONTRACT COMPARE":
-            st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT COMPARISONS</div>", unsafe_allow_html=True)
+            st.markdown('<div class="sb-hist-label">Recent comparisons</div>', unsafe_allow_html=True)
             cc_history = st.session_state.get("cc_history", [])
             if not cc_history:
-                st.markdown("<div style='font-size:11px;opacity:0.85;padding-left:4px;'>No comparisons yet.</div>", unsafe_allow_html=True)
+                st.markdown('<div class="sb-hist-empty">No comparisons yet.</div>', unsafe_allow_html=True)
             else:
                 for i, entry in enumerate(cc_history):
                     label = entry.get("name", "Unknown")[:22].upper()
@@ -432,23 +437,20 @@ def main():
                     )
 
         elif active_app == "DATA AUDITOR":
-            st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT AUDITS</div>", unsafe_allow_html=True)
+            st.markdown('<div class="sb-hist-label">Recent audits</div>', unsafe_allow_html=True)
             audit_history = st.session_state.get("audit_history", [])
             if not audit_history:
-                st.markdown("<div style='font-size:11px;opacity:0.85;padding-left:4px;'>No audits this session.</div>", unsafe_allow_html=True)
+                st.markdown('<div class="sb-hist-empty">No audits this session.</div>', unsafe_allow_html=True)
             else:
                 for i, entry in enumerate(audit_history):
                     score = entry.get("score")
                     score_str = f" — {score:.0f}%" if score is not None else ""
-                    color = "#10b981" if (score or 0) >= 90 else "#f59e0b" if (score or 0) >= 70 else "#ef4444"
                     label = entry.get("name", "Audit")[:18]
                     ts = entry.get("timestamp", "")
                     st.markdown(f"""
-                        <div style="padding:8px 10px;border-radius:8px;border:1px solid rgba(130,130,130,0.12);
-                                    background:var(--secondary-background-color);margin-bottom:6px;cursor:default;">
-                            <div style="font-size:11px;font-weight:700;opacity:0.9;">{label.upper()}</div>
-                            <div style="font-size:10px;margin-top:2px;color:{color};font-weight:700;">{score_str if score_str else 'In Progress'}</div>
-                            <div style="font-size:9px;opacity:0.4;margin-top:1px;">{ts}</div>
+                        <div class="sb-hist-item">
+                            <div class="sb-hist-name">{label.upper()}{score_str}</div>
+                            <div class="sb-hist-meta">{ts}</div>
                         </div>
                     """, unsafe_allow_html=True)
                     if entry.get("markdown"):
@@ -460,6 +462,110 @@ def main():
                             key=f"audit_hist_md_{ts}_{i}",
                             use_container_width=True
                         )
+
+        # ─── Settings & Profile Area ───
+        import streamlit.components.v1 as components
+        components.html("""
+            <script>
+            function anchorSettings() {
+                const doc = window.parent.document;
+                const markers = doc.querySelectorAll('.marker-settings-bottom');
+                if (!markers || markers.length === 0) return;
+                
+                const marker = markers[markers.length - 1];
+                const container = marker.closest('div[data-testid="stVerticalBlock"]');
+                const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+                
+                if (container && sidebar) {
+                    container.style.position = 'fixed';
+                    container.style.bottom = '16px';
+                    container.style.zIndex = '99999';
+                    
+                    container.style.backgroundColor = 'transparent';
+                    container.style.border = 'none';
+                    container.style.padding = '0';
+                    container.style.transform = 'translateX(-20px)';
+                    
+                    const btn = container.querySelector('button');
+                    if (btn) {
+                        btn.style.justifyContent = 'flex-start';
+                        btn.style.paddingLeft = '14px';
+                        btn.style.backgroundColor = 'transparent';
+                        btn.style.border = 'none';
+                        btn.style.borderRadius = '8px';
+                    }
+                    
+                    function syncWidth() {
+                        const w = sidebar.getBoundingClientRect().width;
+                        container.style.width = Math.max(0, w - 48) + 'px';
+                    }
+                    syncWidth();
+                    if (!window.sidebarSettingsObserver) {
+                        window.sidebarSettingsObserver = new ResizeObserver(syncWidth);
+                        window.sidebarSettingsObserver.observe(sidebar);
+                    }
+                    
+                    const contentArea = doc.querySelector('[data-testid="stSidebarUserContent"]');
+                    if (contentArea) {
+                        contentArea.style.paddingBottom = '140px';
+                    }
+                }
+            }
+            anchorSettings();
+            setTimeout(anchorSettings, 100);
+            setTimeout(anchorSettings, 500);
+            setTimeout(anchorSettings, 1000);
+            </script>
+        """, height=0, width=0)
+        
+        st.markdown("""
+            <style>
+            /* API Status Styling */
+            .api-status {
+                display: flex; align-items: center; gap: 8px;
+                padding: 8px 12px; font-size: 11px; font-weight: 600;
+                margin-top: 8px; border-radius: 6px;
+                transform: translateY(-15px);
+            }
+            .api-connected { color: #10b981; }
+            .api-disconnected { color: #ef4444; }
+            .api-status-dot { width: 7px; height: 7px; border-radius: 50%; }
+            .api-connected .api-status-dot { background: #10b981; box-shadow: 0 0 6px #10b981; }
+            .api-disconnected .api-status-dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+            </style>
+        """, unsafe_allow_html=True)
+
+        with st.container():
+            st.markdown('<div class="marker-settings-bottom"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="marker-settings-btn"></div>', unsafe_allow_html=True)
+
+            if st.button("Settings", key="settings_btn", icon=":material/settings:", use_container_width=True):
+                settings_dialog()
+
+            if is_cloud_key():
+                st.markdown(
+                    '<div class="api-status api-connected">'
+                    '<div class="api-status-dot"></div>Cloud Key Active</div>',
+                    unsafe_allow_html=True
+                )
+            elif _api_valid:
+                st.markdown(
+                    f'<div class="api-status api-connected">'
+                    f'<div class="api-status-dot"></div>{_api_status_msg}</div>',
+                    unsafe_allow_html=True
+                )
+            elif saved_key and not _api_valid:
+                st.markdown(
+                    '<div class="api-status api-disconnected">'
+                    '<div class="api-status-dot"></div>API Key Invalid</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    '<div class="api-status api-disconnected">'
+                    '<div class="api-status-dot"></div>API Not Connected</div>',
+                    unsafe_allow_html=True
+                )
 
 
 
