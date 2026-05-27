@@ -26,11 +26,17 @@ def render_page_compare(api_key, compare_utils, compare_excel):
         up2 = None
     
         if not is_focus_mode:
-            st.markdown("<div style='font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-color);opacity:0.5;margin-bottom:16px;'>Upload Contracts</div>", unsafe_allow_html=True)
+            st.markdown("""
+                <div class="first-run-anim" style="text-align: center; margin-bottom: 24px; margin-top: 10px;">
+                    <p style="font-weight: 800; font-size: 14px; letter-spacing: 0.15em; text-transform: uppercase; color: #0d9488; margin: 0;">Upload Contracts</p>
+                    <p style="font-size: 12px; opacity: 0.65; margin-top: 4px;">Choose the previous and new version of contracts to compare</p>
+                </div>
+            """, unsafe_allow_html=True)
             c1, c2 = st.columns(2, gap="large")
             with c1:
                 with st.container(border=True):
-                    st.markdown('<div class="unified-card-header"><div class="c-eye">STEP 1</div><div class="c-ttl" style="margin-bottom:4px;">Previous Contract</div></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 1</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">Previous Contract</p></div>', unsafe_allow_html=True)
                     up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
                     if up1:
                         st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up1.name}</div>', unsafe_allow_html=True)
@@ -38,7 +44,8 @@ def render_page_compare(api_key, compare_utils, compare_excel):
     
             with c2:
                 with st.container(border=True):
-                    st.markdown('<div class="unified-card-header"><div class="c-eye">STEP 2</div><div class="c-ttl" style="margin-bottom:4px;">New Contract</div></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 2</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">New Contract</p></div>', unsafe_allow_html=True)
                     up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
                     if up2:
                         st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">{up2.name}</div>', unsafe_allow_html=True)
@@ -71,7 +78,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
     
                     if not ready:
                         hint = "Upload both contracts to continue" if not (up1 and up2) else "Add API Key in Settings"
-                        st.markdown(f"<p style='text-align:center;color:#9ca3af;font-size:13px;margin-top:6px'>{hint}</p>",
+                        st.markdown(f"<p style='text-align:center;opacity:0.75;font-size:13px;margin-top:6px'>{hint}</p>",
                                     unsafe_allow_html=True)
     
             st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
@@ -84,6 +91,12 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                     st.session_state.cc_review_mode = False
                     st.session_state.cc_report_ready = False
                     st.session_state.cc_extracted_data = None
+                    # Bug C Fix: ล้าง PDF cache เก่า ไม่งั้นจะใช้ไฟล์เก่าต่อ
+                    st.session_state.pop("cc_pdf1_bytes", None)
+                    st.session_state.pop("cc_pdf2_bytes", None)
+                    st.session_state.pop("cc_pdf1_name", None)
+                    st.session_state.pop("cc_pdf2_name", None)
+                    st.session_state.pop("cc_excel_bytes", None)
                     st.rerun()
             st.markdown("<br>", unsafe_allow_html=True)
     
@@ -93,9 +106,20 @@ def render_page_compare(api_key, compare_utils, compare_excel):
     
             render_compare_modal(placeholder, 10)
     
-            if not up1 or not up2:
+            # Bug #6 Fix: Cache bytes ทันทีที่เริ่ม หรือ fallback จาก session cache
+            if up1:
+                st.session_state.cc_pdf1_bytes = up1.getvalue()
+                st.session_state.cc_pdf1_name = up1.name
+            if up2:
+                st.session_state.cc_pdf2_bytes = up2.getvalue()
+                st.session_state.cc_pdf2_name = up2.name
+
+            pdf1_bytes = st.session_state.get("cc_pdf1_bytes")
+            pdf2_bytes = st.session_state.get("cc_pdf2_bytes")
+
+            if not pdf1_bytes or not pdf2_bytes:
                 placeholder.empty()
-                st.error("Upload files not found. Please upload both contracts and try again.")
+                st.error("ไม่พบไฟล์ PDF — กรุณาอัปโหลดใหม่อีกครั้งครับ")
                 st.session_state.cc_started = False
                 st.stop()
     
@@ -105,8 +129,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                 st.session_state.cc_started = False
                 st.stop()
     
-            pdf1_bytes = up1.getvalue()
-            pdf2_bytes = up2.getvalue()
+            # pdf1_bytes / pdf2_bytes already set from session cache above (Bug #6 fix)
     
             chunks = []
             char_count = 0
@@ -197,15 +220,17 @@ def render_page_compare(api_key, compare_utils, compare_excel):
             st.markdown("""
                 <div style="display:flex; align-items:center; gap:12px; margin-bottom: 20px;">
                     <div style="background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:6px; padding:6px 12px; color:white; font-weight:700; font-size:12px; letter-spacing:1px; box-shadow:0 4px 6px -1px rgba(59, 130, 246, 0.3);">DATA VERIFICATION</div>
-                    <div style="font-size:24px; font-weight:700; color:var(--text-color); letter-spacing:-0.03em;">Review & Edit Prices</div>
+                    <div style="font-size:24px; font-weight:700;  letter-spacing:-0.03em;">Review & Edit Prices</div>
                 </div>
                 <div style="background:var(--secondary-background-color); border-left: 4px solid #3b82f6; border-radius:4px 8px 8px 4px; padding:16px 20px; margin-bottom: 32px;">
-                    <p style="margin:0; font-size:14px; color:var(--text-color); opacity:0.9; line-height:1.6;">
+                    <p style="margin:0; font-size:14px;  opacity:0.9; line-height:1.6;">
                         AI extraction is complete. Please verify the extracted prices below. You can <b>click any cell to edit</b> the value before finalizing the Excel report.
                     </p>
                 </div>
             """, unsafe_allow_html=True)
     
+            # Bug A Fix: ใช้ cc_extracted_data จาก session state โดยตรง แล้ว deepcopy ทุกรอบ
+            # เพื่อให้ data_editor reflect ค่าล่าสุดเสมอ
             edited_data = copy.deepcopy(st.session_state.cc_extracted_data)
     
             seasons_data = edited_data.get("seasons") or []
@@ -219,16 +244,19 @@ def render_page_compare(api_key, compare_utils, compare_excel):
     
                 st.markdown(f"""
                     <div style="margin-top:32px; margin-bottom:16px; display:flex; align-items:baseline; flex-wrap:wrap; gap:12px; border-bottom:2px solid var(--secondary-background-color); padding-bottom:8px;">
-                        <div style="font-size:17px; font-weight:700; color:var(--text-color);">{s_name}</div>
-                        <div style="font-size:13px; color:var(--text-color);">
-                            <span style="opacity:0.6;">Prev:</span> <span style="font-weight:600; opacity:0.9;">{p1_display}</span> 
+                        <div style="font-size:17px; font-weight:700; ">{s_name}</div>
+                        <div style="font-size:13px; ">
+                            <span style="opacity:0.9;">Prev:</span> <span style="font-weight:600; opacity:0.9;">{p1_display}</span> 
                             <span style="margin:0 8px;opacity:0.2;">|</span> 
-                            <span style="opacity:0.6;">New:</span> <span style="font-weight:600; color:#3b82f6;">{p2_display}</span>
+                            <span style="opacity:0.9;">New:</span> <span style="font-weight:600; color:#3b82f6;">{p2_display}</span>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
     
                 rooms = season.get("rooms", [])
+                # Bug D Guard: ensure rooms is a list of dicts
+                if not isinstance(rooms, list):
+                    rooms = []
                 if rooms:
                     edited_rooms = st.data_editor(
                         rooms,
@@ -241,7 +269,9 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                         key=f"cc_editor_season_{i}",
                         use_container_width=True
                     )
+                    # Bug A Fix: save edit กลับ session ทันทีเพื่อ survive rerun
                     edited_data["seasons"][i]["rooms"] = edited_rooms
+                    st.session_state.cc_extracted_data["seasons"][i]["rooms"] = edited_rooms
     
             st.markdown("<br>", unsafe_allow_html=True)
             _, btn1, btn2, _ = st.columns([1, 1.5, 1.5, 1])
@@ -263,7 +293,12 @@ def render_page_compare(api_key, compare_utils, compare_excel):
             data = st.session_state.cc_final_data
     
             try:
-                excel_bytes = compare_excel.generate_comparison_excel(data)
+                # Bug B Fix: Cache Excel bytes — อย่า generate ซ้ำทุก rerun
+                if "cc_excel_bytes" not in st.session_state or st.session_state.get("cc_excel_bytes") is None:
+                    excel_bytes = compare_excel.generate_comparison_excel(data)
+                    st.session_state.cc_excel_bytes = excel_bytes
+                else:
+                    excel_bytes = st.session_state.cc_excel_bytes
     
                 timestamp = datetime.now().strftime("%H:%M")
                 hotel_name_raw = data.get("hotel_name")
@@ -292,7 +327,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                             border: 1px solid rgba(16,185,129,0.3); border-radius: 12px;
                             padding: 16px 24px; margin: 24px 0; display:flex; align-items:center; gap:12px;">
                     <div style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></div>
-                    <div style="font-size:14px;font-weight:600;color:var(--text-color);">Analysis complete — your comparison report is ready to download.</div>
+                    <div style="font-size:14px;font-weight:600;">Analysis complete — your comparison report is ready to download.</div>
                 </div>
             """, unsafe_allow_html=True)
     
@@ -300,7 +335,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
             if recommendation:
                 st.markdown(
                     f'<div style="background:var(--secondary-background-color);border-radius:10px;'
-                    f'padding:14px 20px;margin:8px 0 16px;font-size:15px;font-weight:600;color:var(--text-color)">'
+                    f'padding:14px 20px;margin:8px 0 16px;font-size:15px;font-weight:600;color:inherit">'
                     f'{recommendation}</div>',
                     unsafe_allow_html=True
                 )

@@ -31,7 +31,8 @@ def render_page_auditor(api_key, anim_class):
 
         with col1:
             with st.container(border=True):
-                st.markdown(f'<div class="{anim_class} anim-delay-1"><div class="c-eye">STEP 1</div><div class="c-ttl" style="margin-bottom:4px;">Contract PDF</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="{anim_class} anim-delay-1"><p class="c-eye" style="margin:0;">STEP 1</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">Contract PDF</p></div>', unsafe_allow_html=True)
                 pdf_file = st.file_uploader("Upload PDF", type=["pdf"], key="pdf", label_visibility="collapsed")
                 if pdf_file:
                     st.session_state.cached_pdf_bytes = pdf_file.getvalue()
@@ -43,7 +44,8 @@ def render_page_auditor(api_key, anim_class):
 
         with col2:
             with st.container(border=True):
-                st.markdown(f'<div class="{anim_class} anim-delay-2"><div class="c-eye">STEP 2</div><div class="c-ttl" style="margin-bottom:4px;">Data Excel</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="{anim_class} anim-delay-2"><p class="c-eye" style="margin:0;">STEP 2</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">Data Excel</p></div>', unsafe_allow_html=True)
                 excel_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="excel", label_visibility="collapsed")
                 if excel_file:
                     st.session_state.cached_excel_bytes = excel_file.getvalue()
@@ -57,6 +59,7 @@ def render_page_auditor(api_key, anim_class):
         _, focus_col, _ = st.columns([0.5, 5, 0.5])
         with focus_col:
             with st.container(border=True):
+                st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="{anim_class} anim-delay-3"><div class="c-eye">STEP 3</div><div class="c-ttl" style="margin-bottom:8px;">Audit Scope</div></div>', unsafe_allow_html=True)
                 individual_options = [
                     "Net Price & Extra Beds",
@@ -97,20 +100,33 @@ def render_page_auditor(api_key, anim_class):
         _, btn_col, _ = st.columns([1.5, 3, 1.5])
         with btn_col:
             if st.button("Start Audit", type="primary", use_container_width=True, disabled=not ready):
+                # ─── Bug #4 Fix: ล้างสถานะเก่าทั้งหมดก่อนเริ่ม audit ใหม่ ─────────
                 st.session_state.is_auditing = True
                 st.session_state.audit_done = False
                 st.session_state.focus_list = selected_focus
+                st.session_state.pop("_audit_result", None)       # ล้าง report เก่า
+                st.session_state.pop("cancel_requested", None)    # ล้าง cancel flag เก่า
                 st.rerun()
+
 
         if not ready and not st.session_state.get("is_auditing"):
             hint = "Upload PDF and Excel files to continue" if not (has_pdf and has_excel) else "Enter API Key in Settings"
-            st.markdown(f"<p style='text-align:center;color:#94a3b8;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; opacity:0.9;font-size:12px;margin-top:6px;letter-spacing:0.02em'>{hint}</p>", unsafe_allow_html=True)
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
     # ─── Analysis Output ──────────────────────────────────────────────────────────
     if st.session_state.get("is_auditing"):
-        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(130, 130, 130, 0.6);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase; opacity:0.9;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
+
+        # ─── Bug #3 Guard: ถ้าไม่มีไฟล์ cache (เกิดจาก Streamlit restart / zombie state) ─────
+        _pdf_check = st.session_state.get("cached_pdf_bytes")
+        _excel_check = st.session_state.get("cached_excel_bytes")
+        if not _pdf_check or not _excel_check:
+            st.session_state.is_auditing = False
+            st.session_state.pop("audit_done", None)
+            st.warning("⚠️ Session หมดอายุ — กรุณาอัปโหลดไฟล์ใหม่อีกครั้งครับ")
+            st.rerun()
 
         report_placeholder = st.empty()
         modal_placeholder = st.empty()
@@ -143,6 +159,7 @@ def render_page_auditor(api_key, anim_class):
 
                 if chunk == "[RESET_STREAM]":
                     full_response = ""
+                    chunk_count = 0  # ← Bug #2 fix: reset counter so milestone % recalculates correctly
                     continue
                 full_response += chunk
 
@@ -199,7 +216,7 @@ def render_page_auditor(api_key, anim_class):
     if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"):
         saved_result = st.session_state.get("_audit_result", "")
         if saved_result:
-            st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(130, 130, 130, 0.6);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase; opacity:0.9;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
 
             def _show_saved_report(full_text):
                 st.markdown(
@@ -219,7 +236,7 @@ def render_page_auditor(api_key, anim_class):
                     <div style="background: linear-gradient(135deg, {color}15, {color}08); border: 2px solid {color}40; border-radius: 16px; padding: 28px 32px; margin: 24px 0; text-align: center;">
                         <div style="font-size: 52px; font-weight: 900; color: {color}; line-height: 1;">{score:.0f}%</div>
                         <div style="font-size: 13px; font-weight: 700; color: {color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Accuracy Score</div>
-                        {"<div style='font-size:14px;color:rgba(130, 130, 130, 0.65);margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
+                        {"<div style='font-size:14px; opacity:0.9;margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
                     </div>""", unsafe_allow_html=True)
 
                 processed = apply_badges(full_text)
