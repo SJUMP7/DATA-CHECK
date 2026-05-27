@@ -127,7 +127,14 @@ def main():
                 css = f.read()
             st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
         else:
-            st.error("CSS file not found!")
+            # Fallback to style.css if light mode file doesn't exist
+            fallback_path = os.path.join(os.path.dirname(__file__), "assets", "style.css")
+            if os.path.exists(fallback_path):
+                with open(fallback_path, "r", encoding="utf-8") as f:
+                    css = f.read()
+                st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+            else:
+                st.error("CSS file not found!")
 
 
 
