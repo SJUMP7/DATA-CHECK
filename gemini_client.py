@@ -16,8 +16,9 @@ _FALLBACK_MODELS = [
     "gemini-1.5-pro-latest",
 ]
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner=False, ttl=3600)
 def _get_client(api_key: str) -> genai.Client:
+    """Create Gemini client. TTL=1hr prevents stale connections on repeated audits."""
     return genai.Client(api_key=api_key)
 
 @st.cache_data(show_spinner=False, ttl=600)  # Cache model list for 10 min to save quota

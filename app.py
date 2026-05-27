@@ -48,7 +48,7 @@ def main():
             <div class="fixed-overlay"></div>
             <div class="fixed-modal" style="border-color: rgba(239, 68, 68, 0.4) !important; background: var(--secondary-background-color) !important; background: color-mix(in srgb, var(--secondary-background-color) 95%, transparent) !important;">
                 <h3 style="color: #ef4444 !important;">ยืนยันการล้างข้อมูล</h3>
-                <p style="margin-bottom: 24px; color: rgba(130, 130, 130, 0.6) !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+                <p style="margin-bottom: 24px;  opacity: 0.9 !important;">คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลและไฟล์ที่อัปโหลดทั้งหมด? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -338,11 +338,11 @@ def main():
                 div[data-testid="stDialog"] { border-radius: 16px !important; padding: 8px !important; }
                 div[data-testid="stDialog"] h2 { padding-bottom: 16px !important; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; }
                 div[data-testid="stDialog"] .stTextInput label { display: none !important; }
-                div[data-testid="stDialog"] .api-label { font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
-                div[data-testid="stDialog"] .caption-text { font-size: 12px; color: #94a3b8; margin-top: 4px; margin-bottom: 24px; font-weight: 500; }
+                div[data-testid="stDialog"] .api-label { font-size: 11px; font-weight: 800;  opacity: 0.9; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+                div[data-testid="stDialog"] .caption-text { font-size: 12px;  opacity: 0.9; margin-top: 4px; margin-bottom: 24px; font-weight: 500; }
                 div[data-testid="stDialog"] button[kind="primary"] { background: #6366f1 !important; color: white !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; border: none !important; font-weight: 600 !important; }
-                div[data-testid="stDialog"] button[kind="secondary"] { border: 1px solid #e2e8f0 !important; color: #64748b !important; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; font-weight: 600 !important; background: white !important; }
-                div[data-testid="stDialog"] button[kind="secondary"]:hover { border-color: #94a3b8 !important; color: #334155 !important; }
+                div[data-testid="stDialog"] button[kind="secondary"] { border: 1px solid #e2e8f0 !important; color: inherit !important; opacity: 0.8; font-size: 14px !important; border-radius: 10px !important; padding: 12px !important; font-weight: 600 !important; background: var(--background-color) !important; }
+                div[data-testid="stDialog"] button[kind="secondary"]:hover { border- opacity: 0.9 !important; color: #334155 !important; }
                 </style>
             """, unsafe_allow_html=True)
 
@@ -363,19 +363,29 @@ def main():
         st.markdown("""
             <style>
             /* Pin Settings to Bottom */
-            div[data-testid="stSidebarUserContent"] { position: relative !important; padding-bottom: 120px !important; }
-            div[data-testid="stVerticalBlock"]:has(> div > .marker-settings-bottom) {
+            [data-testid="stSidebarUserContent"] { position: relative !important; padding-bottom: 140px !important; }
+            
+            /* Target ONLY the nested vertical block for settings, pinning it to the bottom */
+            [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"]:has(.marker-settings-bottom) {
                 position: absolute !important;
                 bottom: 20px !important;
                 left: 0.75rem !important;
                 right: 0.75rem !important;
                 width: auto !important;
-                z-index: 50;
+                z-index: 50 !important;
             }
+            
+            /* Hide the markers themselves so they take up 0 space */
+            .marker-settings-bottom, .marker-settings-btn {
+                display: none !important;
+            }
+            
             /* Force perfect left alignment on the settings button */
-            div[data-testid="stElementContainer"]:has(.marker-settings-btn) + div[data-testid="stElementContainer"] button {
+            [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"]:has(.marker-settings-bottom) button {
                 justify-content: flex-start !important;
                 padding-left: 14px !important;
+                background-color: var(--secondary-background-color) !important;
+                border: 1px solid rgba(128, 128, 128, 0.1) !important;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -397,16 +407,16 @@ def main():
             st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT COMPARISONS</div>", unsafe_allow_html=True)
             cc_history = st.session_state.get("cc_history", [])
             if not cc_history:
-                st.markdown("<div style='font-size:11px;opacity:0.5;padding-left:4px;'>No comparisons yet.</div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size:11px;opacity:0.85;padding-left:4px;'>No comparisons yet.</div>", unsafe_allow_html=True)
             else:
-                for entry in cc_history:
+                for i, entry in enumerate(cc_history):
                     label = entry.get("name", "Unknown")[:22].upper()
                     st.download_button(
                         label=label,
                         data=entry["data"],
                         file_name=f"{entry['name']}_{entry['timestamp']}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"cc_hist_{entry['timestamp']}",
+                        key=f"cc_hist_{entry['timestamp']}_{i}",
                         use_container_width=True
                     )
 
@@ -414,9 +424,9 @@ def main():
             st.markdown("<div style='font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;margin-bottom:8px;margin-top:32px;'>RECENT AUDITS</div>", unsafe_allow_html=True)
             audit_history = st.session_state.get("audit_history", [])
             if not audit_history:
-                st.markdown("<div style='font-size:11px;opacity:0.5;padding-left:4px;'>No audits this session.</div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size:11px;opacity:0.85;padding-left:4px;'>No audits this session.</div>", unsafe_allow_html=True)
             else:
-                for entry in audit_history:
+                for i, entry in enumerate(audit_history):
                     score = entry.get("score")
                     score_str = f" — {score:.0f}%" if score is not None else ""
                     color = "#10b981" if (score or 0) >= 90 else "#f59e0b" if (score or 0) >= 70 else "#ef4444"
@@ -425,7 +435,7 @@ def main():
                     st.markdown(f"""
                         <div style="padding:8px 10px;border-radius:8px;border:1px solid rgba(130,130,130,0.12);
                                     background:var(--secondary-background-color);margin-bottom:6px;cursor:default;">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-color);opacity:0.9;">{label.upper()}</div>
+                            <div style="font-size:11px;font-weight:700;opacity:0.9;">{label.upper()}</div>
                             <div style="font-size:10px;margin-top:2px;color:{color};font-weight:700;">{score_str if score_str else 'In Progress'}</div>
                             <div style="font-size:9px;opacity:0.4;margin-top:1px;">{ts}</div>
                         </div>
@@ -436,7 +446,7 @@ def main():
                             data=entry["markdown"],
                             file_name=f"{entry['name']}_{ts}.md",
                             mime="text/markdown",
-                            key=f"audit_hist_md_{ts}",
+                            key=f"audit_hist_md_{ts}_{i}",
                             use_container_width=True
                         )
 
@@ -455,7 +465,7 @@ def main():
         st.markdown(f"""
         <div class="hero {anim_class}">
           <div class="h1">DATA AUDITOR</div>
-          <div class="sub">Precision Hotel Contract Verification.</div>
+          <p class="sub">Precision Hotel Contract Verification.</p>
         </div>
         <div class="divider"></div>
         """, unsafe_allow_html=True)
@@ -471,7 +481,7 @@ def main():
         st.markdown(f"""
         <div class="hero {anim_class}">
           <div class="h1">CONTRACT COMPARE</div>
-          <div class="sub">AI-Powered Contract Comparison & Revision Verification.</div>
+          <p class="sub">AI-Powered Contract Comparison & Revision Verification.</p>
         </div>
         <div class="divider"></div>
         """, unsafe_allow_html=True)
