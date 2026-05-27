@@ -100,9 +100,14 @@ def render_audit_modal(placeholder, perc: int, phase: str, focus_text: str = "")
 def render_compare_modal(placeholder, perc: int):
     """Renders the compare progress modal into the given st.empty() placeholder."""
     placeholder.markdown(f'''
-    <div class="first-run-anim">
-        <div class="perc-text">{perc}%</div>
-        <div class="progress-container"><div class="progress-fill" style="width: {perc}%"></div></div>
-        <div class="modal-title" style="margin-top: 16px;">Analyzing document structures...</div>
-    </div>
+        <div class="fixed-overlay"></div>
+        <div class="fixed-modal">
+            <div class="spinner-loader" style="border-top-color: #3b82f6 !important;"></div>
+            <div class="perc-text" style="color: #3b82f6 !important;">{int(perc)}%</div>
+            <h3 style="border-left-color: #3b82f6 !important;">Analyzing Contracts</h3>
+            <p>Extracting seasonal rates and booking policies...</p>
+            <div class="progress-container">
+                <div class="progress-fill" style="width: {perc}%; background: linear-gradient(90deg, #3b82f6, #06b6d4) !important;"></div>
+            </div>
+        </div>
     ''', unsafe_allow_html=True)
