@@ -382,11 +382,11 @@
         div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] { margin-top: -96px !important; position: relative; z-index: 10; margin-bottom: 20px; }
         div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] button { background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; width: 100% !important; height: 80px !important; cursor: pointer !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
         /* 2. Popup Item DA */
-        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 110px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 110px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 99999999 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
         /* 3. Popup Item CC */
-        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 178px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 999997 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 178px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 99999999 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
         /* 4. Backdrop Close */
-        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 999990 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 99999900 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
 
         /* ── Popup Card ────────────────────────────────────────────── */
         .app-popup-card {
@@ -403,7 +403,7 @@
             border-radius: 14px;
             padding: 14px;
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18) !important;
-            z-index: 99999999 !important; /* Force sit on top of everything */
+            z-index: 99999990 !important; /* Sit on top of backdrop but below the overlay buttons */
         }
         
         /* Force parent containers to remain solid and visible */
