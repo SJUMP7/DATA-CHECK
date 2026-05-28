@@ -5,6 +5,8 @@ Layout matches the user's Google Sheets template (yellow header / blue period ro
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from utils_compare import clean_date_period_format
+
 
 
 # ─── Style constants ──────────────────────────────────────────────────────────
@@ -96,6 +98,322 @@ def _fmt_nums(text: str) -> str:
     return re.sub(r'\b\d{4,}\b', _replace, text)
 
 
+def _generate_revise_comparison_excel_data(wb, data: dict):
+    ws = wb.active
+    ws.title = "Comparison Report"
+
+    # Column widths (A–I)
+    widths = [45, 15, 15, 15, 10, 12, 10, 12, 60]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    row = 1
+    hotel_name = data.get("hotel_name", "HOTEL NAME")
+    year_1     = data.get("year_1", "24/25")
+    year_2     = data.get("year_2", "25/26")
+    year_3     = data.get("year_3", "25/26 REVISE")
+
+    # Header Row
+    _cell(ws, row, 1, str(hotel_name).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 2, str(year_1).upper(),     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 3, str(year_2).upper(),     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 4, str(year_3).upper(),     fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 5, f"{year_1} : {year_2} %", fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 6, "Diff",                  fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 7, f"{year_2} : {year_3} %", fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 8, "Diff",                  fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    _cell(ws, row, 9, "",                      fill=_YELLOW, font=_BLACK_BOLD, align=_CENTER, border=_THIN)
+    row += 1
+
+    seasons = data.get("seasons", [])
+    for season in seasons:
+        season_name = season.get("season_name") or ""
+        p1 = clean_date_period_format(season.get("period_1") or "")
+        p2 = clean_date_period_format(season.get("period_2") or "")
+        p3 = clean_date_period_format(season.get("period_3") or "")
+
+        # Period Header (Blue)
+        _cell(ws, row, 1, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 2, p1,                      fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 3, p2,                      fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 4, p3,                      fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 5, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 6, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 7, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 8, "",                      fill=_BLUE, border=_THIN)
+        _cell(ws, row, 9, str(season_name).upper() if season_name else "",
+              fill=_YELLOW if season_name else _LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        row += 1
+
+        cond_raw = season.get("conditions") or []
+        if isinstance(cond_raw, list):
+            cond_lines = cond_raw
+        else:
+            cond_lines = str(cond_raw).split('\n')
+        
+        rooms = season.get("rooms") or []
+        for i, rm in enumerate(rooms):
+            name = str(rm.get("room_name") or "").upper()
+            p1_val = rm.get("price_1", 0)
+            p2_val = rm.get("price_2", 0)
+            p3_val = rm.get("price_3", 0)
+            
+            price_1 = _clean_price(p1_val)
+            price_2 = _clean_price(p2_val)
+            price_3 = _clean_price(p3_val)
+
+            price_1_disp = price_1 if price_1 is not None else "N/A"
+            price_2_disp = price_2 if price_2 is not None else "N/A"
+            price_3_disp = price_3 if price_3 is not None else "N/A"
+
+            # Diff 1-2
+            if price_1 is not None and price_2 is not None:
+                diff_amt_12 = price_2 - price_1
+                diff_pct_12 = (price_2 - price_1) / price_2 if price_2 > 0 else 0.0
+                diff_amt_12_disp = diff_amt_12
+                diff_pct_12_disp = diff_pct_12
+            else:
+                diff_amt_12 = 0
+                diff_pct_12 = 0
+                diff_amt_12_disp = "-"
+                diff_pct_12_disp = "-"
+
+            # Diff 2-3
+            if price_2 is not None and price_3 is not None:
+                diff_amt_23 = price_3 - price_2
+                diff_pct_23 = (price_3 - price_2) / price_3 if price_3 > 0 else 0.0
+                diff_amt_23_disp = diff_amt_23
+                diff_pct_23_disp = diff_pct_23
+            else:
+                diff_amt_23 = 0
+                diff_pct_23 = 0
+                diff_amt_23_disp = "-"
+                diff_pct_23_disp = "-"
+
+            _cell(ws, row, 1, name, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            p1_write = int(price_1) if price_1 is not None and price_1 == int(price_1) else price_1_disp
+            p2_write = int(price_2) if price_2 is not None and price_2 == int(price_2) else price_2_disp
+            p3_write = int(price_3) if price_3 is not None and price_3 == int(price_3) else price_3_disp
+            
+            _cell(ws, row, 2, p1_write, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            _cell(ws, row, 3, p2_write, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            _cell(ws, row, 4, p3_write, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            if price_1 is not None: ws.cell(row=row, column=2).number_format = '#,##0'
+            if price_2 is not None: ws.cell(row=row, column=3).number_format = '#,##0'
+            if price_3 is not None: ws.cell(row=row, column=4).number_format = '#,##0'
+
+            # Format Diff 1-2
+            pct_cell_12 = _cell(ws, row, 5, diff_pct_12_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            if isinstance(diff_pct_12_disp, float):
+                pct_cell_12.number_format = '0.00%'
+                if diff_pct_12 > 0: pct_cell_12.font = Font(color="CC0000", bold=True, name="Calibri", size=10)
+                elif diff_pct_12 < 0: pct_cell_12.font = Font(color="16A34A", bold=True, name="Calibri", size=10)
+
+            amt_cell_12 = _cell(ws, row, 6, diff_amt_12_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            if isinstance(diff_amt_12_disp, float):
+                amt_cell_12.number_format = '#,##0;-#,##0;0'
+                if diff_amt_12 > 0: amt_cell_12.font = Font(color="CC0000", bold=True, name="Calibri", size=10)
+                elif diff_amt_12 < 0: amt_cell_12.font = Font(color="16A34A", bold=True, name="Calibri", size=10)
+
+            # Format Diff 2-3
+            pct_cell_23 = _cell(ws, row, 7, diff_pct_23_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            if isinstance(diff_pct_23_disp, float):
+                pct_cell_23.number_format = '0.00%'
+                if diff_pct_23 > 0: pct_cell_23.font = Font(color="CC0000", bold=True, name="Calibri", size=10)
+                elif diff_pct_23 < 0: pct_cell_23.font = Font(color="16A34A", bold=True, name="Calibri", size=10)
+
+            amt_cell_23 = _cell(ws, row, 8, diff_amt_23_disp, font=_BLACK_NORM, align=_CENTER, border=_THIN)
+            if isinstance(diff_amt_23_disp, float):
+                amt_cell_23.number_format = '#,##0;-#,##0;0'
+                if diff_amt_23 > 0: amt_cell_23.font = Font(color="CC0000", bold=True, name="Calibri", size=10)
+                elif diff_amt_23 < 0: amt_cell_23.font = Font(color="16A34A", bold=True, name="Calibri", size=10)
+
+            cond_text = cond_lines[i] if i < len(cond_lines) else ""
+            _cell(ws, row, 9, cond_text, font=Font(color="CC0000", name="Calibri", size=10), align=_LEFT, border=_THIN)
+            row += 1
+
+        for i in range(len(rooms), len(cond_lines)):
+            if not cond_lines[i].strip(): continue
+            for c in range(1, 9): _cell(ws, row, c, "", border=_THIN)
+            _cell(ws, row, 9, cond_lines[i], font=Font(color="CC0000", name="Calibri", size=10), align=_LEFT, border=_THIN)
+            row += 1
+
+    row += 1
+
+    def _extract_notes(lines):
+        if lines is None: return "", []
+        if not isinstance(lines, list):
+            lines = [str(lines)]
+        clean = []
+        notes = []
+        for line in lines:
+            if not line: continue
+            line_str = str(line)
+            if "[RED]" in line_str:
+                notes.append(line_str.replace("[RED]", "").strip())
+            else:
+                clean.append(line_str)
+        return "\n".join(clean), notes
+
+    def _build_stacked_section_revise(title, key):
+        nonlocal row
+        items = data.get(key, [])
+        if not items: return
+        
+        _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+        row += 1
+        
+        for item in items:
+            c1_raw = item.get("contract_1", [])
+            c2_raw = item.get("contract_2", [])
+            c3_raw = item.get("contract_3", [])
+            
+            c1_text, c1_notes = _extract_notes(c1_raw)
+            c2_text, c2_notes = _extract_notes(c2_raw)
+            c3_text, c3_notes = _extract_notes(c3_raw)
+            all_notes = c1_notes + [n for n in c2_notes if n not in c1_notes] + [n for n in c3_notes if n not in c1_notes and n not in c2_notes]
+            
+            c1_text = _fmt_nums(c1_text)
+            c2_text = _fmt_nums(c2_text)
+            c3_text = _fmt_nums(c3_text)
+            
+            # Contract 1
+            _cell(ws, row, 1, f"CONTRACT {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            row += 1
+            
+            _cell(ws, row, 1, c1_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            ws.row_dimensions[row].height = max(18, 15 * (c1_text.count("\n") + 1))
+            row += 1
+            
+            # Contract 2
+            _cell(ws, row, 1, f"CONTRACT {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            row += 1
+            
+            _cell(ws, row, 1, c2_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            ws.row_dimensions[row].height = max(18, 15 * (c2_text.count("\n") + 1))
+            row += 1
+
+            # Contract 3
+            _cell(ws, row, 1, f"CONTRACT {year_3}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            row += 1
+            
+            _cell(ws, row, 1, c3_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            ws.row_dimensions[row].height = max(18, 15 * (c3_text.count("\n") + 1))
+            row += 1
+            
+            # Notes
+            if all_notes:
+                notes_text = "\n".join(all_notes)
+                _cell(ws, row, 1, notes_text, font=Font(color="CC0000", bold=True, name="Calibri", size=10), align=_LEFT, border=_THIN)
+                for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+                ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+                ws.row_dimensions[row].height = max(18, 15 * (notes_text.count("\n") + 1))
+                row += 1
+                
+        row += 1
+
+    def _build_sidebyside_section_revise(title, key):
+        nonlocal row
+        items = data.get(key, [])
+        if not items: return
+        
+        _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+        row += 1
+        
+        # Headers: 2 cols per contract + 3 cols for comparison
+        _cell(ws, row, 1, f"CONTRACT {year_1}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 2, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+        
+        _cell(ws, row, 3, f"CONTRACT {year_2}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 4, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=4)
+
+        _cell(ws, row, 5, f"CONTRACT {year_3}", fill=_LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        _cell(ws, row, 6, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+
+        _cell(ws, row, 7, "COMPARISON / CHANGES", fill=PatternFill("solid", fgColor="D0E0F0"), font=Font(color="000080", bold=True, name="Calibri", size=10), align=_CENTER, border=_THIN)
+        _cell(ws, row, 8, "", border=_THIN)
+        _cell(ws, row, 9, "", border=_THIN)
+        ws.merge_cells(start_row=row, start_column=7, end_row=row, end_column=9)
+        row += 1
+
+        for item in items:
+            c1_raw = item.get("contract_1", [])
+            c2_raw = item.get("contract_2", [])
+            c3_raw = item.get("contract_3", [])
+            diff = str(item.get("diff_summary") or "SAME")
+            diff2 = str(item.get("diff_summary_2") or "SAME")
+            
+            c1_text, c1_notes = _extract_notes(c1_raw)
+            c2_text, c2_notes = _extract_notes(c2_raw)
+            c3_text, c3_notes = _extract_notes(c3_raw)
+            all_notes = c1_notes + [n for n in c2_notes if n not in c1_notes] + [n for n in c3_notes if n not in c1_notes and n not in c2_notes]
+            
+            c1_text = _fmt_nums(c1_text)
+            c2_text = _fmt_nums(c2_text)
+            c3_text = _fmt_nums(c3_text)
+
+            # Contract 1
+            _cell(ws, row, 1, c1_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            _cell(ws, row, 2, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+
+            # Contract 2
+            _cell(ws, row, 3, c2_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            _cell(ws, row, 4, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=4)
+
+            # Contract 3
+            _cell(ws, row, 5, c3_text, font=_BLACK_NORM, align=_LEFT, border=_THIN)
+            _cell(ws, row, 6, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+
+            # Comparison
+            diff_text = f"C1 vs C2: {diff}\nC2 vs C3: {diff2}"
+            _cell(ws, row, 7, diff_text, font=Font(color="000080", bold=True, name="Calibri", size=10), align=_CENTER, border=_THIN)
+            _cell(ws, row, 8, "", border=_THIN)
+            _cell(ws, row, 9, "", border=_THIN)
+            ws.merge_cells(start_row=row, start_column=7, end_row=row, end_column=9)
+            
+            ws.row_dimensions[row].height = max(35, 15 * (max(c1_text.count("\n"), c2_text.count("\n"), c3_text.count("\n"), diff_text.count("\n")) + 1))
+            row += 1
+            
+            if all_notes:
+                notes_text = "\n".join(all_notes)
+                _cell(ws, row, 1, notes_text, font=Font(color="CC0000", bold=True, name="Calibri", size=10), align=_CENTER, border=_THIN)
+                for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
+                ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+                ws.row_dimensions[row].height = max(18, 15 * (notes_text.count("\n") + 1))
+                row += 1
+                
+        row += 1
+
+    _build_stacked_section_revise("EXTRA BED / EXTRA PERSON", "extra_bed")
+    _build_sidebyside_section_revise("EARLY BIRD OFFER", "early_bird")
+    _build_sidebyside_section_revise("BONUS NIGHT OFFER", "bonus_night")
+    _build_sidebyside_section_revise("WELLBEING SANCTUARY POOL SUITE LONG STAY BENEFITS", "wellbeing")
+    _build_sidebyside_section_revise("CANCELLATION", "cancellation")
+    _build_sidebyside_section_revise("OTHER PROMOTIONS / CONDITIONS", "other_promotions")
+
+
 def generate_comparison_excel(data: dict) -> bytes:
     """
     สร้าง Excel workbook จาก JSON ที่ได้จาก Gemini Compare Contract
@@ -114,6 +432,15 @@ def generate_comparison_excel(data: dict) -> bytes:
     Output: bytes ของ .xlsx file พร้อม download
     """
     wb = openpyxl.Workbook()
+    
+    # If year_3 is present, use the Revise Contract Mode generator
+    if "year_3" in data:
+        _generate_revise_comparison_excel_data(wb, data)
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf.getvalue()
+
     ws = wb.active
     ws.title = "Comparison Report"
 
@@ -142,13 +469,13 @@ def generate_comparison_excel(data: dict) -> bytes:
     seasons = data.get("seasons", [])
     for season in seasons:
         season_name = season.get("season_name") or ""
-        p1 = season.get("period_1") or ""
-        p2 = season.get("period_2") or ""
+        p1 = clean_date_period_format(season.get("period_1") or "")
+        p2 = clean_date_period_format(season.get("period_2") or "")
 
         # Period Header (Blue)
         _cell(ws, row, 1, "",                      fill=_BLUE, border=_THIN)
-        _cell(ws, row, 2, str(p1).upper(),         fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
-        _cell(ws, row, 3, str(p2).upper(),         fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 2, p1,                      fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
+        _cell(ws, row, 3, p2,                      fill=_BLUE, font=_WHITE_BOLD, align=_CENTER, border=_THIN)
         _cell(ws, row, 4, "",                      fill=_BLUE, border=_THIN)
         _cell(ws, row, 5, "",                      fill=_BLUE, border=_THIN)
         _cell(ws, row, 6, str(season_name).upper() if season_name else "",
