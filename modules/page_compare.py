@@ -21,58 +21,85 @@ def render_page_compare(api_key, compare_utils, compare_excel):
             st.rerun()
     
         is_focus_mode = st.session_state.get("cc_review_mode") or st.session_state.get("cc_report_ready")
-    
         up1 = None
         up2 = None
+        up3 = None
     
         if not is_focus_mode:
-            st.markdown("""
-                <style>
-                /* Custom theme for Compare module Upload phase */
-                .cc-upload-header { font-weight: 800; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #3b82f6; }
-                .cc-upload-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
-                .cc-upload-sub { font-size: 13px; opacity: 0.6; margin-top: 4px; }
-                </style>
-                <div class="first-run-anim" style="text-align: center; margin-bottom: 32px; margin-top: 10px;">
-                    <div class="cc-upload-header">DATA COMPARISON</div>
-                    <div class="cc-upload-title">Upload Contracts</div>
-                    <div class="cc-upload-sub">Select the previous version and the revised version to identify changes.</div>
-                </div>
-            """, unsafe_allow_html=True)
-            c1, c2 = st.columns(2, gap="large")
-            with c1:
-                with st.container(border=True):
-                    st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
-                    st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0; color:#3b82f6 !important;">STEP 1</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px; border-left-color:#3b82f6 !important;">Previous Contract</p></div>', unsafe_allow_html=True)
-                    up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
-                    if up1:
-                        st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">✓ {up1.name}</div>', unsafe_allow_html=True)
+            # Elegant Revise Toggle UI
+            use_revise = st.checkbox(
+                "เปรียบเทียบสัญญาฉบับแก้ไข (Revise Contract Mode)", 
+                key="cc_use_revise", 
+                value=st.session_state.get("cc_use_revise", False),
+                help="ติ๊กช่องนี้หากโรงแรมมีสัญญาฉบับแก้ไข (Revise/Yieldable Contract) เพื่อทำการเปรียบเทียบ 3 สัญญาพร้อมกัน"
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
 
-            with c2:
-                with st.container(border=True):
-                    st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
-                    st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0; color:#3b82f6 !important;">STEP 2</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px; border-left-color:#3b82f6 !important;">New Contract</p></div>', unsafe_allow_html=True)
-                    up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
-                    if up2:
-                        st.markdown(f'<div style="font-size:12px;color:#3b82f6;font-weight:600;margin-top:8px;">✓ {up2.name}</div>', unsafe_allow_html=True)
-
+            if use_revise:
+                c1, c2, c3 = st.columns(3, gap="medium")
+                with c1:
+                    with st.container(border=True):
+                        st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 1</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">Previous Contract</p></div>', unsafe_allow_html=True)
+                        up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
+                        if up1:
+                            st.markdown(f'<div style="font-size:12px;color:#2563eb;font-weight:600;margin-top:8px;">✓ {up1.name}</div>', unsafe_allow_html=True)
+                with c2:
+                    with st.container(border=True):
+                        st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 2</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">New Contract</p></div>', unsafe_allow_html=True)
+                        up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
+                        if up2:
+                            st.markdown(f'<div style="font-size:12px;color:#2563eb;font-weight:600;margin-top:8px;">✓ {up2.name}</div>', unsafe_allow_html=True)
+                with c3:
+                    with st.container(border=True):
+                        st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0; color:#10b981 !important;">STEP 3</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px; border-left-color:#10b981 !important;">Revise Contract</p></div>', unsafe_allow_html=True)
+                        up3 = st.file_uploader("Contract 2 (Revise)", type=["pdf"], key="pdf3", label_visibility="collapsed")
+                        if up3:
+                            st.markdown(f'<div style="font-size:12px;color:#10b981;font-weight:600;margin-top:8px;">✓ {up3.name}</div>', unsafe_allow_html=True)
+            else:
+                c1, c2 = st.columns(2, gap="large")
+                with c1:
+                    with st.container(border=True):
+                        st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 1</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">Previous Contract</p></div>', unsafe_allow_html=True)
+                        up1 = st.file_uploader("Contract 1", type=["pdf"], key="pdf1", label_visibility="collapsed")
+                        if up1:
+                            st.markdown(f'<div style="font-size:12px;color:#2563eb;font-weight:600;margin-top:8px;">✓ {up1.name}</div>', unsafe_allow_html=True)
+                with c2:
+                    with st.container(border=True):
+                        st.markdown('<div class="custom-card-marker"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="unified-card-header"><p class="c-eye" style="margin:0;">STEP 2</p><p class="c-ttl" style="margin-top:0; margin-bottom:4px;">New Contract</p></div>', unsafe_allow_html=True)
+                        up2 = st.file_uploader("Contract 2", type=["pdf"], key="pdf2", label_visibility="collapsed")
+                        if up2:
+                            st.markdown(f'<div style="font-size:12px;color:#2563eb;font-weight:600;margin-top:8px;">✓ {up2.name}</div>', unsafe_allow_html=True)
+ 
             st.markdown("<br>", unsafe_allow_html=True)
     
         cta_placeholder = st.empty()
     
         # ─── CTA ──────────────────────────────────────────────────────────────────
-        ready = bool(up1 and up2 and api_key)
+        ready = bool(up1 and up2 and (up3 if use_revise else True) and api_key)
     
         if not is_focus_mode:
             up1_name = up1.name if up1 else ""
             up2_name = up2.name if up2 else ""
-            if "cc_last_up1" not in st.session_state or st.session_state.cc_last_up1 != up1_name or st.session_state.cc_last_up2 != up2_name:
+            up3_name = up3.name if up3 else ""
+            if ("cc_last_up1" not in st.session_state 
+                or st.session_state.cc_last_up1 != up1_name 
+                or st.session_state.cc_last_up2 != up2_name
+                or st.session_state.get("cc_last_up3") != up3_name
+                or st.session_state.get("cc_last_use_revise") != use_revise):
+                
                 st.session_state.cc_started = False
                 st.session_state.cc_review_mode = False
                 st.session_state.cc_report_ready = False
                 st.session_state.cc_extracted_data = None
                 st.session_state.cc_last_up1 = up1_name
                 st.session_state.cc_last_up2 = up2_name
+                st.session_state.cc_last_up3 = up3_name
+                st.session_state.cc_last_use_revise = use_revise
     
             with cta_placeholder.container():
                 _, btn_col, _ = st.columns([1.5, 3, 1.5])
@@ -98,7 +125,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                         st.rerun()
     
                     if not ready:
-                        hint = "Upload both contracts to continue" if not (up1 and up2) else "Add API Key in Settings"
+                        hint = "Upload required contracts to continue" if not (up1 and up2 and (up3 if use_revise else True)) else "Add API Key in Settings"
                         st.markdown(f"<p style='text-align:center;opacity:0.75;font-size:13px;margin-top:6px'>{hint}</p>",
                                     unsafe_allow_html=True)
     
@@ -112,11 +139,13 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                     st.session_state.cc_review_mode = False
                     st.session_state.cc_report_ready = False
                     st.session_state.cc_extracted_data = None
-                    # Bug C Fix: ล้าง PDF cache เก่า ไม่งั้นจะใช้ไฟล์เก่าต่อ
+                    # Clean PDF cache
                     st.session_state.pop("cc_pdf1_bytes", None)
                     st.session_state.pop("cc_pdf2_bytes", None)
+                    st.session_state.pop("cc_pdf3_bytes", None)
                     st.session_state.pop("cc_pdf1_name", None)
                     st.session_state.pop("cc_pdf2_name", None)
+                    st.session_state.pop("cc_pdf3_name", None)
                     st.session_state.pop("cc_excel_bytes", None)
                     st.rerun()
             st.markdown("<br>", unsafe_allow_html=True)
@@ -127,18 +156,25 @@ def render_page_compare(api_key, compare_utils, compare_excel):
     
             render_compare_modal(placeholder, 10)
     
-            # Bug #6 Fix: Cache bytes ทันทีที่เริ่ม หรือ fallback จาก session cache
+            # Cache bytes immediately
             if up1:
                 st.session_state.cc_pdf1_bytes = up1.getvalue()
                 st.session_state.cc_pdf1_name = up1.name
             if up2:
                 st.session_state.cc_pdf2_bytes = up2.getvalue()
                 st.session_state.cc_pdf2_name = up2.name
-
+            if up3 and st.session_state.get("cc_use_revise"):
+                st.session_state.cc_pdf3_bytes = up3.getvalue()
+                st.session_state.cc_pdf3_name = up3.name
+            else:
+                st.session_state.pop("cc_pdf3_bytes", None)
+                st.session_state.pop("cc_pdf3_name", None)
+ 
             pdf1_bytes = st.session_state.get("cc_pdf1_bytes")
             pdf2_bytes = st.session_state.get("cc_pdf2_bytes")
-
-            if not pdf1_bytes or not pdf2_bytes:
+            pdf3_bytes = st.session_state.get("cc_pdf3_bytes") if st.session_state.get("cc_use_revise") else None
+ 
+            if not pdf1_bytes or not pdf2_bytes or (st.session_state.get("cc_use_revise") and not pdf3_bytes):
                 placeholder.empty()
                 st.error("ไม่พบไฟล์ PDF — กรุณาอัปโหลดใหม่อีกครั้งครับ")
                 st.session_state.cc_started = False
@@ -167,7 +203,7 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                 st.markdown('</div>', unsafe_allow_html=True)
     
             try:
-                for chunk in compare_utils.stream_contract_comparison(pdf1_bytes, pdf2_bytes, api_key):
+                for chunk in compare_utils.stream_contract_comparison(pdf1_bytes, pdf2_bytes, api_key, pdf3_bytes=pdf3_bytes):
                     if st.session_state.get("cc_cancel_requested"):
                         break
     
@@ -263,46 +299,72 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                 s_name = season.get("season_name") or f"Season {i+1}"
                 p1 = season.get("period_1", "")
                 p2 = season.get("period_2", "")
+                p3 = season.get("period_3", "")
     
                 p1_display = p1 if p1 and p1.strip() and p1 != "N/A" else "Not Specified"
                 p2_display = p2 if p2 and p2.strip() and p2 != "N/A" else "Not Specified"
+                p3_display = p3 if p3 and p3.strip() and p3 != "N/A" else "Not Specified"
     
-                st.markdown(f"""
-                    <div style="margin-top:32px; margin-bottom:16px; border: 1px solid var(--secondary-background-color); border-radius: 8px; overflow: hidden;">
-                        <div style="background: var(--secondary-background-color); padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-                            <div style="font-size:16px; font-weight:800; color:#3b82f6;">{s_name}</div>
-                            <div style="font-size:13px; display:flex; align-items:center; gap:8px; opacity:0.9;">
-                                <div style="background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="opacity:0.6;">Prev:</span> <span style="font-weight:600;">{p1_display}</span>
-                                </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                                <div style="background:rgba(59,130,246,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(59,130,246,0.2); color:#3b82f6;">
-                                    <span style="opacity:0.8;">New:</span> <span style="font-weight:600;">{p2_display}</span>
+                if "year_3" in edited_data:
+                    st.markdown(f"""
+                        <div style="margin-top:32px; margin-bottom:16px; border: 1px solid var(--secondary-background-color); border-radius: 8px; overflow: hidden;">
+                            <div style="background: var(--secondary-background-color); padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                                <div style="font-size:16px; font-weight:800; color:#3b82f6;">{s_name}</div>
+                                <div style="font-size:13px; display:flex; align-items:center; gap:8px; opacity:0.9;">
+                                    <div style="background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
+                                        <span style="opacity:0.6;">Prev:</span> <span style="font-weight:600;">{p1_display}</span>
+                                    </div>
+                                    <span style="opacity:0.3;">&rarr;</span>
+                                    <div style="background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
+                                        <span style="opacity:0.6;">New:</span> <span style="font-weight:600;">{p2_display}</span>
+                                    </div>
+                                    <span style="opacity:0.3;">&rarr;</span>
+                                    <div style="background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); color:#10b981;">
+                                        <span style="opacity:0.8;">Revise:</span> <span style="font-weight:600;">{p3_display}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                        <div style="margin-top:32px; margin-bottom:16px; border: 1px solid var(--secondary-background-color); border-radius: 8px; overflow: hidden;">
+                            <div style="background: var(--secondary-background-color); padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                                <div style="font-size:16px; font-weight:800; color:#3b82f6;">{s_name}</div>
+                                <div style="font-size:13px; display:flex; align-items:center; gap:8px; opacity:0.9;">
+                                    <div style="background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
+                                        <span style="opacity:0.6;">Prev:</span> <span style="font-weight:600;">{p1_display}</span>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                    <div style="background:rgba(59,130,246,0.1); padding:4px 10px; border-radius:20px; border:1px solid rgba(59,130,246,0.2); color:#3b82f6;">
+                                        <span style="opacity:0.8;">New:</span> <span style="font-weight:600;">{p2_display}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
     
                 rooms = season.get("rooms", [])
-                # Bug D Guard: ensure rooms is a list of dicts
                 if not isinstance(rooms, list):
                     rooms = []
                 if rooms:
                     st.markdown('<div style="margin: 0 4px;">', unsafe_allow_html=True)
+                    col_config = {
+                        "room_name": st.column_config.TextColumn("Room Name", width="large"),
+                        "price_1": st.column_config.TextColumn("Previous Price"),
+                        "price_2": st.column_config.TextColumn("New Price"),
+                    }
+                    if "year_3" in edited_data:
+                        col_config["price_3"] = st.column_config.TextColumn("Revise Price")
+                        
                     edited_rooms = st.data_editor(
                         rooms,
-                        column_config={
-                            "room_name": st.column_config.TextColumn("Room Name", width="large"),
-                            "price_1": st.column_config.TextColumn("Previous Price"),
-                            "price_2": st.column_config.TextColumn("New Price"),
-                        },
+                        column_config=col_config,
                         hide_index=True,
                         key=f"cc_editor_season_{i}",
                         use_container_width=True
                     )
                     st.markdown('</div>', unsafe_allow_html=True)
-                    # Bug A Fix: save edit กลับ session ทันทีเพื่อ survive rerun
                     edited_data["seasons"][i]["rooms"] = edited_rooms
                     st.session_state.cc_extracted_data["seasons"][i]["rooms"] = edited_rooms
     
