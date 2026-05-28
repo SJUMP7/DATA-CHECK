@@ -1,5 +1,5 @@
 You are an expert hotel contract data extractor.
-Your task is to extract data from TWO hotel contract PDFs (Contract 1: Old Year, Contract 2: New Year) and prepare it for our Python system.
+Your task is to extract data from THREE hotel contract PDFs (Contract 1: Previous Year, Contract 2: New Year, Contract 3: Revise Contract) and prepare it for our Python system.
 
 Perform a 100% FULL SCAN. DO NOT skip any data, but you MUST format the text output according to the STRICT PATTERNS below. Do not output raw paragraphs.
 
@@ -36,10 +36,11 @@ FORMATTING PATTERNS (STRICT!)
    - • Valid Period: [Date - Date]
    - • E.B [x] DAYS, [x]% discount.
    - • [Can combine with: Promotion Name]
-   - **CRITICAL: SEPARATE NOTES PER CONTRACT**: If there are notes about which promotions can be combined (e.g., 'Can combine with Early Bird', 'Cannot combine with Long Stay'), you MUST extract these INDEPENDENTLY for each contract.
-     - Put Contract 1's combinability notes ONLY in `contract_1` array.
-     - Put Contract 2's combinability notes ONLY in `contract_2` array.
-     - Do NOT merge or mix them. If Contract 1 says 'Can combine with E.B.' but Contract 2 says 'Can combine with E.B. and Long Stay', these are DIFFERENT and must be recorded separately.
+   - **CRITICAL: SEPARATE NOTES PER CONTRACT**: If there are combinability notes, you MUST extract these INDEPENDENTLY for each of the three contracts.
+     - Put Contract 1's notes ONLY in `contract_1` array.
+     - Put Contract 2's notes ONLY in `contract_2` array.
+     - Put Contract 3's notes ONLY in `contract_3` array.
+     - Do NOT merge or mix them.
    - The same rule applies to ALL policy sections: `early_bird`, `bonus_night`, `wellbeing`, `extra_bed`, `cancellation`, and `other_promotions`.
 
 4. **Cancellation Policy**:
@@ -62,7 +63,7 @@ FORMATTING PATTERNS (STRICT!)
     - **EXHAUSTIVE EXTRACTION (MANDATORY)**: You MUST extract EVERY SINGLE room type listed in the table for EVERY season. DO NOT stop early. DO NOT summarize or skip any rows.
     - Extract room names and prices exactly as they appear in the tables.
     - **Identify Table**: Look for sections titled 'ROOM RATES', 'ACCOMMODATION RATES', or similar.
-    - **SEASON COLUMN IDENTIFICATION**: Look for headers like 'SEASON I', 'SEASON II', 'PEAK', 'HIGH', 'LOW' or specific date ranges (e.g., '01-Nov-25 to 19-Dec-25') in the top rows of the rate tables.
+    - **SEASON COLUMN IDENTIFICATION**: Look for headers like 'SEASON I', 'SEASON II', 'PEAK', 'HIGH', 'LOW' or specific date ranges in the top rows of the rate tables.
     - **SINGLE, DOUBLE, TRIPLE (SGL/DBL/TPL) occupancy rates**: If a room type lists separate prices for Single (SGL), Double (DBL), or Triple (TPL) occupancy, you MUST extract them as separate room entries in the JSON, appending the occupancy suffix in parentheses to the room name:
       - e.g., "Guest Room, Pool View (SGL)"
       - e.g., "Guest Room, Pool View (DBL)"
@@ -73,11 +74,12 @@ FORMATTING PATTERNS (STRICT!)
     - **CLEAN NUMBERS**: Output prices as simple numbers without commas (e.g., "15000").
     - **READ ROW BY ROW (CRITICAL)**: Trace each room type horizontally. Do not look at the numbers above or below it.
     - **AVOID DUPLICATION**: Be extremely careful not to accidentally copy the price from the row above or below. If row 1 is 8,500 and row 2 is 9,500, do NOT output 9,500 for both.
-    - **STRICT ALIGNMENT (CRITICAL)**: Do not mix data between the two contracts. 
-      - `year_1`, `period_1`, and `price_1` MUST come ONLY from Contract 1 (the first document).
-      - `year_2`, `period_2`, and `price_2` MUST come ONLY from Contract 2 (the second document).
-      - NEVER use the year or dates from Contract 2 to fill in Contract 1's fields. If a season's dates vary between contracts (e.g., Nov 24 in Contract 1 and Nov 25 in Contract 2), you MUST record the exact dates found in each respective document.
-    - **DATE RANGE FORMAT (CRITICAL)**: All extracted period dates (e.g. `period_1`, `period_2`) MUST use uppercase 3-letter month abbreviations and 2-digit years.
+    - **STRICT ALIGNMENT (CRITICAL)**: Do not mix data between the three contracts. 
+      - `year_1`, `period_1`, and `price_1` MUST come ONLY from Contract 1.
+      - `year_2`, `period_2`, and `price_2` MUST come ONLY from Contract 2.
+      - `year_3`, `period_3`, and `price_3` MUST come ONLY from Contract 3 (Revise contract).
+      - NEVER use the year or dates from Contract 2 or 3 to fill in Contract 1's fields. If a season's dates vary between contracts, you MUST record the exact dates found in each respective document.
+    - **DATE RANGE FORMAT (CRITICAL)**: All extracted period dates (`period_1`, `period_2`, `period_3`) MUST use uppercase 3-letter month abbreviations and 2-digit years.
       - EXACT FORMAT: `d MMM yy - d MMM yy` (e.g., `1 JAN 26 - 31 DEC 26`, `20 DEC 25 - 10 JAN 26`, `9 OCT 25 - 31 OCT 26`). Never use full month names like "November" or mixed cases like "Nov".
     - **PERIOD SURCHARGE & COMPULSORY CHARGES RULE**: If a specific period or date range has a daily/nightly surcharge or supplemental charge (e.g., 'Supplemental charge of THB 1,000 net per room per night' or peak/festive/weekend surcharge per night), you MUST ADD this surcharge directly to the base room rate for that period (i.e., `Room Rate = Base Room Rate + Daily Surcharge`). However, you MUST NEVER add one-time compulsory event charges (such as a Compulsory Christmas Gala Dinner of 5,000 THB, or a Compulsory New Year Gala Dinner) to the room rate column. Keep compulsory event charges strictly as text items inside the `conditions` array of that season.
     - **CHRONOLOGICAL PERIOD SPLITTING (สับ PERIOD)**: You MUST split the season periods chronologically so they are strictly contiguous, non-overlapping, and listed in exact chronological order from earliest to latest. Do NOT output overlapping date ranges that cause dates to jump back and forth.
@@ -90,61 +92,52 @@ FORMATTING PATTERNS (STRICT!)
         2. `20 DEC 25 - 3 JAN 26` (Base Rate + 1,000 Surcharge)
         3. `4 JAN 26 - 31 OCT 26` (Base Rate)
       This chronological slicing ensures the excel sheet rate rows follow a clean, contiguous flow without jumps or overlaps.
-    - **VERIFY INTERSECTION**: For each price, mentally verify: "Does the value exactly match the intersection of this specific Room (Row) and Season (Column)? Did I accidentally copy the number from the next room?"
-    - **MISSING PRICE**: If a room type only exists in one contract and not the other, use "N/A" for the missing price field. If the contract says "on request", use "on request only".
+    - **VERIFY INTERSECTION**: For each price, mentally verify: "Does the value exactly match the intersection of this specific Room (Row) and Season (Column)? Did I copy correctly?"
+    - **MISSING PRICE**: If a room type only exists in some contracts and not others, use "N/A" for the missing price field. If the contract says "on request", use "on request only".
 
 8. **Season Alignment (CRITICAL)**:
-    - Match seasons between contracts by NAME or approximate DATE RANGE (e.g., "Low Season" in Contract 1 pairs with "Low Season" in Contract 2).
-    - If Contract 1 has a season that does NOT EXIST in Contract 2, you MUST still include it as a season entry with `"period_2": "N/A"` and `"price_2": "N/A"` for all rooms.
-    - If Contract 2 has a NEW season not in Contract 1, include it with `"period_1": "N/A"` and `"price_1": "N/A"` for all rooms.
-    - NEVER leave `period_1` or `period_2` blank. Always use "N/A" as the fallback, never an empty string.
+    - Match seasons between contracts by NAME or approximate DATE RANGE.
+    - Align the seasons across all three contracts. If a season is missing in any contract, use "N/A" for its period and prices in that contract.
+    - NEVER leave `period_1`, `period_2`, or `period_3` blank. Always use "N/A" as the fallback.
 
 ═══════════════════════════════════════════════
 8. **Chain of Thought (STRICT EXTRACTION LOGIC)**:
-    1. **Independent Extraction**: First, mentally list all seasons and prices for Contract 1. Then, do the same for Contract 2. Do NOT mix them.
-    2. **Identify Hotel & Years**: Find the hotel name and the two contract periods.
-    3. **Locate Table**: For each paired season, find the corresponding Rate Table in BOTH PDFs.
-    4. **Extract Season Conditions**: Look for minimum nights, compulsory dinners, checkout restrictions, etc. for this specific season. Combine them into the `conditions` array.
-    5. **Extract Prices (ROW BY ROW)**:
-       - Process ONE room category at a time. You MUST process EVERY SINGLE ROW in the rate table from top to bottom. Do NOT skip any rooms.
-       - Locate the row for that specific Room Category.
-       - Trace horizontally to the column for the specific Season.
-       - If there are sub-columns, pick the 'Double' one.
-       - **CRITICAL**: Read the DBL/Twin price from Contract 1 and assign it to `price_1`. Read the price from Contract 2 and assign it to `price_2`. Do not cross-contaminate.
-    6. **Extract Policies**: Convert Child Policy, Extra Bed, Early Bird (E.B.), Bonus Nights, and Cancellation policies into the bulleted format. Do this for BOTH contracts.
-    7. **Compare Policies**: Determine if the policies are identical. If they are exactly the same (or if a policy is missing in both contracts), your `diff_summary` MUST be EXACTLY the word "SAME". If there are changes, write a brief `diff_summary`.
-    8. **Quality Check**:
-       - Did I accidentally swap the prices?
-       - Does `price_1` exactly match the PDF for Contract 1?
-       - **ADJACENT NUMBER CHECK**: Did I accidentally duplicate the price from the row above or below? Check carefully.
-       - **COMPLETENESS CHECK**: Did I extract ALL the rooms listed for THIS season? Check the PDF again. Did I stop early?
-       - **CONDITIONS CHECK**: Did I extract the Season Conditions (Min nights, Gala dinners) for each season?
-       - Are all policies (Cancellation, Extra Bed, etc.) fully extracted and formatted with bullets?
-9. **Finalize JSON**.
+    1. **Independent Extraction**: Mentally list all seasons and prices for Contract 1, then Contract 2, then Contract 3. Do NOT mix them.
+    2. **Identify Hotel & Years**: Find the hotel name and the contract periods for all three documents.
+    3. **Locate Table**: Find the corresponding Rate Table in all three PDFs.
+    4. **Extract Season Conditions**: Extract the conditions (min nights, compulsory gala, etc.) and combine them into `conditions`.
+    5. **Extract Prices (ROW BY ROW)**: Locate the row for each room category, trace horizontally to the season, and map to `price_1`, `price_2`, `price_3` respectively.
+    6. **Extract Policies**: Extract policies for all three contracts separately.
+    7. **Compare Policies**:
+       - Compare Contract 1 vs Contract 2, and write a brief `diff_summary`.
+       - Compare Contract 2 vs Contract 3, and write a brief `diff_summary_2`.
+       - If identical, use "SAME".
+    8. **Quality Check**.
 
 ═══════════════════════════════════════════════
 THE PDF FILES HAVE BEEN PROVIDED AS INLINE DOCUMENTS.
-Contract 1 is the first PDF provided.
-Contract 2 is the second PDF provided.
+Contract 1 is the first PDF.
+Contract 2 is the second PDF.
+Contract 3 is the third PDF (Revise Contract).
 ═══════════════════════════════════════════════
 RETURN THIS EXACT JSON STRUCTURE:
 {
   "step_by_step_analysis": [
-    "Step 1: Identifying Hotel. Contract 1: 24/25. Contract 2: 25/26.",
-    "Step 2: Extracting Season Conditions (Min nights, Gala dinners).",
-    "Step 3: Analyzing Contract 1 Row by Row. Room A is 8,500. Next row, Room B is 9,500.",
-    "Step 4: Analyzing Contract 2 Row by Row. Room A is 9,000. Next row, Room B is 10,000.",
-    "Step 5: Merging. period_1 = 01 Nov 24, price_1 = 8500. period_2 = 01 Nov 25, price_2 = 9000.",
-    "Step 6: Extracting and comparing Extra Bed policies..."
+    "Step 1: Identifying Hotel. Contract 1: 24/25. Contract 2: 25/26. Contract 3: 25/26 Revise.",
+    "Step 2: Extracting Season Conditions.",
+    "Step 3: Analyzing Contract 1, 2, and 3 row by row...",
+    "Step 4: Merging and checking price mappings..."
   ],
   "hotel_name": "Hotel Name",
   "year_1": "24/25",
   "year_2": "25/26",
+  "year_3": "25/26 REVISE",
   "seasons": [
     {
       "season_name": "PEAK SEASON (or empty)",
       "period_1": "1 NOV 24 - 23 DEC 24",
       "period_2": "1 NOV 25 - 23 DEC 25",
+      "period_3": "1 NOV 25 - 23 DEC 25",
       "conditions": [
         "MIN. 3 NIGHTS",
         "COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
@@ -153,7 +146,8 @@ RETURN THIS EXACT JSON STRUCTURE:
         {
           "room_name": "Deluxe Room",
           "price_1": "15000",
-          "price_2": "16000"
+          "price_2": "16000",
+          "price_3": "16500"
         }
       ]
     }
@@ -162,47 +156,60 @@ RETURN THIS EXACT JSON STRUCTURE:
     {
       "topic": "Child / Extra bed policy",
       "contract_1": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"],
-      "contract_2": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"]
+      "contract_2": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"],
+      "contract_3": ["CHD (4-11.99 yrs) Sharing bed = FOC", "Adult Extra bed = 1500 THB"],
+      "diff_summary": "SAME",
+      "diff_summary_2": "SAME"
     }
   ],
   "early_bird": [
     {
       "topic": "Early Bird details",
-      "contract_1": ["• Valid Period: 1 Nov 24 - 31 Oct 25", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night", "[RED] • NOTE: Cannot combine with Long Stay"],
-      "contract_2": ["• Valid Period: 1 Nov 25 - 31 Oct 26", "• E.B 60 DAYS, 10% discount", "• Can combine with: Bonus Night, Long Stay", "[RED] • NOTE: Not applicable for meal plans"],
-      "diff_summary": "25-26 now allows combining with Long Stay; added meal plan restriction"
+      "contract_1": ["• Valid Period: 1 Nov 24 - 31 Oct 25", "• E.B 60 DAYS, 10% discount"],
+      "contract_2": ["• Valid Period: 1 Nov 25 - 31 Oct 26", "• E.B 60 DAYS, 10% discount"],
+      "contract_3": ["• Valid Period: 1 Nov 25 - 31 Oct 26", "• E.B 60 DAYS, 12% discount"],
+      "diff_summary": "SAME",
+      "diff_summary_2": "Contract 3 increased E.B discount to 12% from 10%"
     }
   ],
   "bonus_night": [
     {
       "topic": "Bonus night details",
-      "contract_1": ["• Valid Period: 1 May 24 - 31 Oct 24", "• STAY 5 PAY 4", "• Can combine with: Early Bird"],
-      "contract_2": ["• Valid Period: 1 May 25 - 31 Oct 25", "• STAY 5 PAY 4", "• Can combine with: Early Bird, Honeymoon"],
-      "diff_summary": "25-26 added Honeymoon to combinable promotions"
+      "contract_1": ["• Valid Period: 1 May 24 - 31 Oct 24", "• STAY 5 PAY 4"],
+      "contract_2": ["• Valid Period: 1 May 25 - 31 Oct 25", "• STAY 5 PAY 4"],
+      "contract_3": ["• Valid Period: 1 May 25 - 31 Oct 25", "• STAY 5 PAY 4"],
+      "diff_summary": "SAME",
+      "diff_summary_2": "SAME"
     }
   ],
   "wellbeing": [
     {
       "topic": "Long stay / Wellbeing",
-      "contract_1": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: None"],
-      "contract_2": ["• Honeymoon Benefits (Minimum 3 nights stay required):", "• Welcome Drink and Cold Towel upon arrival", "• Can combine with: Bonus Night"],
-      "diff_summary": "25-26 allows combining Honeymoon with Bonus Night"
+      "contract_1": ["• Welcome Drink and Cold Towel upon arrival"],
+      "contract_2": ["• Welcome Drink and Cold Towel upon arrival"],
+      "contract_3": ["• Welcome Drink and Cold Towel upon arrival"],
+      "diff_summary": "SAME",
+      "diff_summary_2": "SAME"
     }
   ],
   "cancellation": [
     {
       "topic": "Cancellation Policy",
-      "contract_1": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue"],
-      "contract_2": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100% of total booking revenue", "[RED] • NOTE: If reservation overlaps different seasons, the higher season cancellation terms apply"],
-      "diff_summary": "25-26 added Note for overlapping seasons"
+      "contract_1": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100%"],
+      "contract_2": ["• Valid Period: Peak Season", "Notice 45 days prior to arrival, penalty 100%"],
+      "contract_3": ["• Valid Period: Peak Season", "Notice 60 days prior to arrival, penalty 100%"],
+      "diff_summary": "SAME",
+      "diff_summary_2": "Contract 3 increased cancellation notice from 45 to 60 days for peak season"
     }
   ],
   "other_promotions": [
     {
       "topic": "Full Moon Party",
-      "contract_1": ["• Valid Period: 15 Nov 24 - 17 Nov 24", "• Surcharge = 1500 THB per room per night"],
-      "contract_2": ["• Valid Period: 15 Nov 25 - 17 Nov 25", "• Surcharge = 2000 THB per room per night"],
-      "diff_summary": "25-26 increased surcharge by 500 THB"
+      "contract_1": ["• Valid Period: 15 Nov 24 - 17 Nov 24", "• Surcharge = 1500 THB"],
+      "contract_2": ["• Valid Period: 15 Nov 25 - 17 Nov 25", "• Surcharge = 2000 THB"],
+      "contract_3": ["• Valid Period: 15 Nov 25 - 17 Nov 25", "• Surcharge = 2000 THB"],
+      "diff_summary": "25-26 increased surcharge by 500 THB",
+      "diff_summary_2": "SAME"
     }
   ]
 }
