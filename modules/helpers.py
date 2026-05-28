@@ -84,30 +84,48 @@ def apply_badges(text: str) -> str:
 
 # ─── Modal Renderers (self-contained, use st.empty() internally) ──────────────
 def render_audit_modal(placeholder, perc: int, phase: str, focus_text: str = ""):
-    """Renders the audit progress modal into the given st.empty() placeholder."""
+    """Renders an inline progress card (replaces the old fixed overlay modal)."""
+    _focus_html = (
+        f'<div class="da-focus-row">'
+        f'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+        f' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        f'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>'
+        f'Scope: {focus_text}'
+        f'</div>'
+    ) if focus_text else ""
     placeholder.markdown(f"""
-        <div class="fixed-overlay"></div>
-        <div class="fixed-modal">
-            <div class="spinner-loader"></div>
-            <div class="perc-text">{int(perc)}%</div>
-            <h3>{phase}</h3>
-            {"<p>Target: " + focus_text + "</p>" if focus_text else ""}
-            <div class="progress-container"><div class="progress-fill" style="width: {perc}%"></div></div>
+    <style>
+    .da-progress-card{{background:var(--secondary-background-color);border:1px solid rgba(128,128,128,.12);
+        border-radius:12px;padding:16px 20px;margin-bottom:10px;font-family:'Plus Jakarta Sans',sans-serif;}}
+    .da-p-top{{display:flex;align-items:center;gap:12px;margin-bottom:12px;}}
+    .da-spinner{{width:18px;height:18px;border-radius:50%;
+        border:2px solid rgba(139,92,246,.15);border-top-color:#8b5cf6;
+        animation:da-spin .8s linear infinite;flex-shrink:0;}}
+    @keyframes da-spin{{to{{transform:rotate(360deg);}}}}
+    .da-phase{{font-size:13px;font-weight:600;flex:1;}}
+    .da-pct{{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#8b5cf6;}}
+    .da-track{{height:3px;background:rgba(139,92,246,.1);border-radius:99px;overflow:hidden;margin-bottom:10px;}}
+    .da-fill{{height:100%;background:#8b5cf6;border-radius:99px;transition:width .4s;}}
+    .da-focus-row{{display:flex;align-items:center;gap:5px;font-size:11px;opacity:0.5;font-weight:500;}}
+    </style>
+    <div class="da-progress-card">
+        <div class="da-p-top">
+            <div class="da-spinner" aria-hidden="true"></div>
+            <div class="da-phase">{phase}</div>
+            <div class="da-pct">{int(perc)}%</div>
         </div>
+        <div class="da-track"><div class="da-fill" style="width:{perc}%"></div></div>
+        {_focus_html}
+    </div>
     """, unsafe_allow_html=True)
 
 
 def render_compare_modal(placeholder, perc: int):
     """Renders the compare progress modal into the given st.empty() placeholder."""
     placeholder.markdown(f'''
-        <div class="fixed-overlay"></div>
-        <div class="fixed-modal">
-            <div class="spinner-loader" style="border-top-color: #3b82f6 !important;"></div>
-            <div class="perc-text" style="color: #3b82f6 !important;">{int(perc)}%</div>
-            <h3 style="border-left-color: #3b82f6 !important;">Analyzing Contracts</h3>
-            <p>Extracting seasonal rates and booking policies...</p>
-            <div class="progress-container">
-                <div class="progress-fill" style="width: {perc}%; background: linear-gradient(90deg, #3b82f6, #06b6d4) !important;"></div>
-            </div>
-        </div>
+    <div class="first-run-anim">
+        <div class="perc-text">{perc}%</div>
+        <div class="progress-container"><div class="progress-fill" style="width: {perc}%"></div></div>
+        <div class="modal-title" style="margin-top: 16px;">Analyzing document structures...</div>
+    </div>
     ''', unsafe_allow_html=True)

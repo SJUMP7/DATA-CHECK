@@ -128,22 +128,22 @@ def render_page_auditor(api_key, anim_class):
             st.warning("⚠️ Session หมดอายุ — กรุณาอัปโหลดไฟล์ใหม่อีกครั้งครับ")
             st.rerun()
 
-        report_placeholder = st.empty()
-        modal_placeholder = st.empty()
+        modal_placeholder  = st.empty()
         cancel_placeholder = st.empty()
+        report_placeholder = st.empty()
 
         focus_text = ", ".join(st.session_state.get("focus_list", [])) or "Full Scan"
 
-        # Initial loading state — using canonical helper from modules.helpers
+        # Inline progress card
         render_audit_modal(modal_placeholder, 5, "Initializing AI Engine...", focus_text)
 
-        # Centered floating cancel button above overlay
+        # Inline cancel button — sits below progress card, above live output
         with cancel_placeholder.container():
-            st.markdown('<div class="cancel-btn-container">', unsafe_allow_html=True)
-            if st.button("CANCEL AUDIT", key="cancel_btn_trigger"):
-                st.session_state.cancel_requested = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            _, _c, _ = st.columns([4, 1.5, 4])
+            with _c:
+                if st.button("Stop audit", key="cancel_btn_trigger", use_container_width=True):
+                    st.session_state.cancel_requested = True
+                    st.rerun()
 
         full_response = ""
         chunk_count = 0
@@ -164,7 +164,13 @@ def render_page_auditor(api_key, anim_class):
                 full_response += chunk
 
                 display_response = apply_badges(full_response)
-                report_placeholder.markdown(f'<div class="output-card">\n\n{display_response}▌\n\n</div>', unsafe_allow_html=True)
+                report_placeholder.markdown(
+                    f'<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;'
+                    f'opacity:0.4;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(130,130,130,.1);">'
+                    f'Live output</div>'
+                    f'<div class="output-card">\n\n{display_response}▌\n\n</div>',
+                    unsafe_allow_html=True
+                )
 
             render_audit_modal(modal_placeholder, 100, "Audit Complete", focus_text)
             modal_placeholder.empty()
@@ -215,75 +221,134 @@ def render_page_auditor(api_key, anim_class):
     # ─── Show Saved Report (after rerun with audit_done=True) ────────────────────
     if st.session_state.get("audit_done") and not st.session_state.get("is_auditing"):
         saved_result = st.session_state.get("_audit_result", "")
-        if saved_result:
-            st.markdown('<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase; opacity:0.9;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(130, 130, 130, 0.12)">AUDIT REPORT</div>', unsafe_allow_html=True)
+        if not saved_result:
+            st.stop()
 
-            def _show_saved_report(full_text):
-                st.markdown(
-                    '<div class="audit-done-banner"><div class="audit-done-dot"></div>Audit complete — report ready for review.</div>',
-                    unsafe_allow_html=True
+        # ── CSS ────────────────────────────────────────────────────────────────
+        st.markdown("""
+        <style>
+        .da-done-banner{display:flex;align-items:center;gap:10px;background:rgba(16,185,129,.06);
+            border:0.5px solid rgba(16,185,129,.3);border-left:3px solid #10b981;
+            border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:14px;}
+        .da-done-dot{width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0;}
+        .da-done-text{font-size:13px;font-weight:600;color:#10b981;font-family:'Plus Jakarta Sans',sans-serif;}
+        .da-score-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+        .da-score-main{background:var(--secondary-background-color);border:1px solid rgba(128,128,128,.12);
+            border-radius:12px;padding:18px 20px;border-top-width:2px;border-top-style:solid;}
+        .da-score-val{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:600;line-height:1;letter-spacing:-.03em;}
+        .da-score-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;}
+        .da-score-summary{font-size:12px;opacity:.7;margin-top:10px;line-height:1.5;
+            border-top:0.5px solid rgba(128,128,128,.12);padding-top:10px;font-family:'Plus Jakarta Sans',sans-serif;}
+        .da-score-meta{background:var(--secondary-background-color);border:1px solid rgba(128,128,128,.12);
+            border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;}
+        .da-meta-row{display:flex;align-items:center;gap:8px;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;}
+        .da-meta-row svg{flex-shrink:0;opacity:.4;}
+        .da-meta-lbl{opacity:.5;flex:1;}
+        .da-meta-val{font-weight:600;font-size:11px;text-align:right;max-width:160px;
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .da-report-hdr{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
+            opacity:.4;margin-bottom:16px;padding-bottom:10px;
+            border-bottom:1px solid rgba(130,130,130,.1);font-family:'Plus Jakarta Sans',sans-serif;}
+        </style>
+        """, unsafe_allow_html=True)
+
+        # ── Success banner ─────────────────────────────────────────────────────
+        st.markdown("""
+        <div class="da-done-banner">
+            <div class="da-done-dot"></div>
+            <div class="da-done-text">Audit complete — report ready for review</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.toast("Audit complete")
+
+        # ── Score + Meta cards ─────────────────────────────────────────────────
+        score_match        = re.search(r'คะแนนความถูกต้อง.*?(\d+(?:\.\d+)?)\s*%', saved_result)
+        summary_match_text = re.search(r'บทสรุป.*?:\s*(.+)', saved_result)
+        _pdf_nm   = re.sub(r'\.(pdf|PDF)$', '',  st.session_state.get("cached_pdf_name",   "—"))
+        _excel_nm = re.sub(r'\.[Xx][Ll][Ss][Xx]?$', '', st.session_state.get("cached_excel_name", "—"))
+        _scope_nm = ", ".join(st.session_state.get("focus_list", [])) or "Full Scan"
+        _ts_now   = datetime.now().strftime("%H:%M")
+
+        if score_match:
+            score       = float(score_match.group(1))
+            score_color = "#10b981" if score >= 90 else "#f59e0b" if score >= 70 else "#ef4444"
+            summary_txt = summary_match_text.group(1).strip() if summary_match_text else ""
+
+            def _mrow(icon_d, lbl, val):
+                return (
+                    f'<div class="da-meta-row">'
+                    f'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+                    f' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{icon_d}</svg>'
+                    f'<span class="da-meta-lbl">{lbl}</span>'
+                    f'<span class="da-meta-val">{val}</span></div>'
                 )
-                st.toast("Audit Process Completed Successfully")
-                st.markdown('<a id="audit-result-section"></a>', unsafe_allow_html=True)
 
-                score_match = re.search(r'คะแนนความถูกต้อง.*?(\d+(?:\.\d+)?)\s*%', full_text)
-                summary_match_text = re.search(r'บทสรุป.*?:\s*(.+)', full_text)
-                if score_match:
-                    score = float(score_match.group(1))
-                    color = "#10b981" if score >= 90 else "#f59e0b" if score >= 70 else "#ef4444"
-                    summary_txt = summary_match_text.group(1).strip() if summary_match_text else ""
-                    st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, {color}15, {color}08); border: 2px solid {color}40; border-radius: 16px; padding: 28px 32px; margin: 24px 0; text-align: center;">
-                        <div style="font-size: 52px; font-weight: 900; color: {color}; line-height: 1;">{score:.0f}%</div>
-                        <div style="font-size: 13px; font-weight: 700; color: {color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Accuracy Score</div>
-                        {"<div style='font-size:14px; opacity:0.9;margin-top:12px;'>"+summary_txt+"</div>" if summary_txt else ""}
-                    </div>""", unsafe_allow_html=True)
+            _i_pdf = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+            _i_xls = '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>'
+            _i_tgt = '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'
+            _i_clk = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
 
-                processed = apply_badges(full_text)
-                parts = re.split(r'(?=<details>)|(?<=</details>)', processed)
-                for part in parts:
-                    stripped = part.strip()
-                    if not stripped:
-                        continue
-                    if stripped.startswith('<details>'):
-                        summary_m = re.search(r'<summary>([\s\S]*?)</summary>', part)
-                        label = "HTML Code — คลิกเพื่อดู / Copy"
-                        if summary_m:
-                            raw_label = summary_m.group(1)
-                            label = re.sub(r'<[^>]+>', '', raw_label).strip()
-                        code_match = re.search(r'```html\s*([\s\S]*?)```', part)
-                        html_code = code_match.group(1).strip() if code_match else ""
-                        if not html_code:
-                            fallback = re.search(r'</summary>([\s\S]*?)</details>', part)
-                            html_code = fallback.group(1).strip() if fallback else ""
-                        with st.expander(label, expanded=False):
-                            if html_code:
-                                st.code(html_code, language="html")
-                    else:
-                        st.markdown(f'<div class="output-section">{stripped}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="da-score-row">
+                <div class="da-score-main" style="border-top-color:{score_color};">
+                    <div class="da-score-val" style="color:{score_color};">{score:.0f}%</div>
+                    <div class="da-score-lbl">Accuracy score</div>
+                    {'<div class="da-score-summary">' + summary_txt + '</div>' if summary_txt else ''}
+                </div>
+                <div class="da-score-meta">
+                    {_mrow(_i_pdf, 'Contract PDF', _pdf_nm)}
+                    {_mrow(_i_xls, 'Excel file',   _excel_nm)}
+                    {_mrow(_i_tgt, 'Scope',         _scope_nm)}
+                    {_mrow(_i_clk, 'Completed',     _ts_now)}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            _show_saved_report(saved_result)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        _, export_btn, reaudit_btn, reset_btn = st.columns([1, 2, 2, 2])
-        with export_btn:
-            _result_md = st.session_state.get("_audit_result", "")
-            _pdf_nm = re.sub(r'\.(pdf|PDF)$', '', st.session_state.get("cached_pdf_name", "Audit"))
-            _ts_export = datetime.now().strftime("%Y%m%d_%H%M")
+        # ── Action bar ─────────────────────────────────────────────────────────
+        _ts_export = datetime.now().strftime("%Y%m%d_%H%M")
+        _col_exp, _col_reaudit, _col_reset = st.columns(3)
+        with _col_exp:
             st.download_button(
-                "\u2913 Export .md",
-                data=_result_md.encode("utf-8"),
+                "⬇ Export .md",
+                data=saved_result.encode("utf-8"),
                 file_name=f"{_pdf_nm}_{_ts_export}.md",
                 mime="text/markdown",
                 use_container_width=True,
-                key="export_md_btn"
+                key="export_md_btn",
+                type="primary",
             )
-        with reaudit_btn:
-            if st.button("EDIT SCOPE / RE-AUDIT", use_container_width=True, key="edit_scope_btm_btn"):
-                for key in ["audit_done", "is_auditing", "_audit_result"]:
-                    st.session_state.pop(key, None)
+        with _col_reaudit:
+            if st.button("Edit scope / Re-audit", use_container_width=True, key="edit_scope_btm_btn"):
+                for _k in ["audit_done", "is_auditing", "_audit_result"]:
+                    st.session_state.pop(_k, None)
                 st.rerun()
-        with reset_btn:
-            if st.button("RESET / NEW UPLOAD", use_container_width=True, key="reset_btm_btn"):
+        with _col_reset:
+            if st.button("Reset / New upload", use_container_width=True, key="reset_btm_btn"):
                 st.session_state.confirm_reset = True
                 st.rerun()
+
+        # ── Report body ────────────────────────────────────────────────────────
+        st.markdown("<div class='da-report-hdr' style='margin-top:20px;'>Audit Report</div>", unsafe_allow_html=True)
+
+        processed = apply_badges(saved_result)
+        parts = re.split(r'(?=<details>)|(?<=</details>)', processed)
+        for part in parts:
+            stripped = part.strip()
+            if not stripped:
+                continue
+            if stripped.startswith('<details>'):
+                summary_m  = re.search(r'<summary>([\s\S]*?)</summary>', part)
+                label      = "HTML Code — คลิกเพื่อดู / Copy"
+                if summary_m:
+                    raw_label = summary_m.group(1)
+                    label     = re.sub(r'<[^>]+>', '', raw_label).strip()
+                code_match = re.search(r'```html\s*([\s\S]*?)```', part)
+                html_code  = code_match.group(1).strip() if code_match else ""
+                if not html_code:
+                    fallback  = re.search(r'</summary>([\s\S]*?)</details>', part)
+                    html_code = fallback.group(1).strip() if fallback else ""
+                with st.expander(label, expanded=False):
+                    if html_code:
+                        st.code(html_code, language="html")
+            else:
+                st.markdown(f'<div class="output-section">{stripped}</div>', unsafe_allow_html=True)
