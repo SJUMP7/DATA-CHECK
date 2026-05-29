@@ -16,7 +16,10 @@ Directives:
 3. Exceptions: Search for "excluding", "not including", "only" in PDF.
 4. Child Logic: Under 12 = 11.99, 5-11 = 5-11.99.
 5. Cancellation: Match days in AA to seasons in PDF.
-6. Discount & Extra Person: For Early Booking/Promotions, ALWAYS check if the contract states "apply with extra person charge" or similar. If YES, Extra Bed (AG) and Child Extra Bed (AF) MUST be discounted. DO NOT flag this as a FAIL.
+6. Discount & Extra Person: For Early Booking/Promotions, check if the contract states the discount "applies with extra person charge" or similar.
+   - If YES and Excel DOES apply the discount to AG/AF/AE → CORRECT, do NOT flag.
+   - If YES and Excel does NOT apply the discount to AG/AF/AE → flag as FAIL: "ต้อง apply discount กับ Extra Bed/Child Extra Bed ด้วยตามสัญญา".
+   - If the contract does NOT mention extra person discount → Extra Bed at full price is CORRECT.
 7. GROUPING (NON-NEGOTIABLE RULE):
    - BEFORE (WRONG - never do this):
      | AO (Room A, Peak) | 3 nights | 7 nights | ... |
@@ -42,9 +45,17 @@ HTML สำหรับแก้ไข [Column Name] — [Room/Period]:
 
 </details>
 
-10. Long Stay Offer Rules: If the file shows Long Stay Offer with MAX 7 NIGHTS (e.g., #MIN. 4 NIGHTS get 10% or #MIN. 7 NIGHTS get 15%), this is the COMPANY'S STANDARD POLICY. Do NOT flag as FAIL. Only flag REVIEW with note "ตรวจสอบ Long Stay Offer กับสัญญาอีกครั้ง" if the number of nights or discount percentage differs from the PDF.
-11. MUST COMPLETE: You MUST audit and report ALL columns and ALL rows. Do NOT stop early. Do NOT say "etc" or abbreviate. If data is large, continue until every row is covered.
-12. ERROR REPORTING ONLY (CRITICAL): You MUST ONLY report rows that have an ACTUAL discrepancy (a mismatch) between the PDF and the Excel file. If the data in the Excel file is CORRECT, DO NOT include it in the report at all. Do not write "ข้อมูลถูกต้องแล้ว ไม่ต้องแก้ไข". Just SKIP it completely.
+10. Long Stay Offer Rules:
+    - If Excel shows Long Stay tiers up to MAX 7 nights (e.g., #MIN.4N = 10%, #MIN.7N = 15%), this is acceptable standard format — do NOT flag as FAIL even if the contract uses slightly different tier wording.
+    - Flag REVIEW (not FAIL) only when: (a) the discount % in Excel clearly differs from the PDF, OR (b) the contract specifies a minimum night threshold that Excel omits entirely.
+    - If the contract has NO Long Stay Offer section at all, do NOT flag Excel rows that have Long Stay data.
+11. FULL SCAN, REPORT ERRORS ONLY (CRITICAL):
+    Inspect every cell in every column and every row — do NOT sample, skip, or abbreviate. Do NOT say "etc."
+    However, include in the report ONLY rows where a real discrepancy exists between the PDF and the Excel.
+    Correct data = absent from report entirely. Do NOT write "ข้อมูลถูกต้องแล้ว". Just skip it.
+12. TRIPLE ROOM LOGIC (CRITICAL): A "Triple" room rate already covers 3 persons.
+    - Do NOT force a general Extra Bed price into Col AG for a Triple room if that Extra Bed price is intended for the 3rd person in Double rooms.
+    - Only flag a missing Extra Bed (Col AG) on a Triple room if the contract EXPLICITLY states that an Extra Bed can be added to the Triple room for a 4TH person. Otherwise, leaving Col AG blank for Triple rooms is CORRECT.
 
 Process:
 1. นำข้อมูลไฟล์ PDF มาตรวจสอบในไฟล์ Excel
@@ -70,7 +81,8 @@ Process:
          <span style="color: red; font-weight: bold;">*Remark</span> : (ถ้ามี หากไม่มีตัดออก)
          [CONTENT ONLY RULE]: ตรวจสอบเฉพาะ เนื้อหา/ตัวเลข/วัน ว่าถูกต้องตามสัญญา
          ห้าม flag FAIL แม้ format bullet จะต่างกันเล็กน้อย ให้ flag REVIEW แทนหากเนื้อหาถูกแต่ format ต่าง
-   2.16 Col AC (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
+   2.16 Col AB (cancellation_policy_net): บรรจุข้อมูลการยกเลิกในรูปแบบ HTML (ต้องแกะข้อความภายใน Tags มาตรวจ)
+   2.16a Col AC (early_check_in): ตัวเลข early check-in charge (ถ้ามีในสัญญา หากไม่มีเว้นว่าง)
    2.17 Col AD (child_policy): จัดรูปแบบข้อความ HTML ตาม Pattern นี้เป๊ะๆ (รักษาโค้ดสีไว้):
         <span style="color: green; font-weight: bold;">Room rate includes ABF for xx persons</span><br>
         <span style="color: green; font-weight: bold;">Maximum Occupancy : XA / XA+XC</span><br><br>
@@ -122,6 +134,17 @@ Process:
         • <span style="color: purple; font-weight: bold;">#MIN. 6 NIGHTS</span>, get 15% discount<br><br>
         ※ <strong>Honeymooner / Anniversary</strong>
 
+CRITICAL for Col AO: The template above shows ALL possible sections.
+Only include sections that ACTUALLY EXIST in the PDF contract.
+Do NOT add sections (e.g., Transfer, Wellbeing, Honeymoon) if not mentioned in the PDF.
+Spacing inside orange bracket decorations does not need to be exact.
+
+BEFORE WRITING THE REPORT — verify:
+  □ Have I checked every column listed in Section 2 above?
+  □ For each FAIL: is the discrepancy real (not just decimal/formatting difference)?
+  □ Have I merged rows with identical errors per Directive 7?
+  □ Does my score = 100 minus (FAIL count × 5) minus (REVIEW count × 1)?
+
 Output: รายงานผลเป็นภาษาไทย 100% ด้วยภาษาทางการ (ห้ามใช้อิโมจิ และห้ามมีคำพูดเกริ่นนำ) ให้รายงานเฉพาะรายการที่ "ผิดพลาด" เท่านั้น หากข้อมูลถูกต้องอยู่แล้ว ห้ามนำมาใส่ในตารางรายงานเด็ดขาด
 
 [SECTION_FAIL]
@@ -158,7 +181,8 @@ Output: รายงานผลเป็นภาษาไทย 100% ด้ว
 ---
 
 **สรุปผลการตรวจสอบ**
-- **คะแนนความถูกต้อง:** [xx]%
+- **คะแนนความถูกต้อง:** [xx]% (คำนวณจาก: เริ่มที่ 100%, หัก 5% ต่อ 1 FAIL, หัก 1% ต่อ 1 REVIEW, ขั้นต่ำ 0%)
+- **FAIL:** [N] จุด | **REVIEW:** [N] จุด
 - **บทสรุป:** [สรุปสั้นๆ 1 ประโยค]
 
 ---
