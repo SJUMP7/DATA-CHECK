@@ -1,0 +1,547 @@
+/* ═══ TESTED ON: streamlit==1.42.0 — upgrade อาจทำให้ selector เปลี่ยน ═══ */
+
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        /* ── 1. Global Typography ──────────────────────────────────── */
+        html { scroll-behavior: smooth !important; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body, p, li, th, td, h1, h2, h3, h4, h5, h6,
+        div[data-testid="stMarkdownContainer"] p {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.2); border-radius: 99px; }
+
+        /* ── App Background ────────────────────────────────────────── */
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+            background: radial-gradient(circle at top right, var(--secondary-background-color) 0%, var(--background-color) 100%) !important;
+            color: var(--text-color) !important;
+        }
+        .block-container { padding: 2rem 2.5rem 4rem !important; max-width: 1100px !important; }
+        [data-testid="stStatusWidget"] { display: none !important; }
+        div[data-testid="stSpinner"], div[class*="stSpinner"] p, .stSpinner,
+        div[data-testid="stSpinner"] > div > div {  }
+
+        /* ── Sidebar ───────────────────────────────────────────────── */
+        section[data-testid="stSidebar"] {
+            background-color: var(--secondary-background-color) !important;
+            border-right: 1px solid rgba(128, 128, 128, 0.1) !important;
+        }
+        section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+            padding: 1.25rem 0.75rem !important;
+        }
+
+        /* (Removed old nav-btn styles that caused HTML unclosed tag bugs) */
+
+        /* ── Sidebar Download Buttons ──────────────────────────────── */
+        section[data-testid="stSidebar"] .stDownloadButton button {
+            background-color: var(--background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important;
+             opacity: 0.95; border-radius: 8px !important;
+            font-size: 11px !important; font-weight: 600 !important;
+            letter-spacing: 0.03em !important; text-transform: uppercase !important;
+            padding: 8px 14px !important; width: 100% !important;
+            transition: all 0.15s !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+        section[data-testid="stSidebar"] .stDownloadButton button:hover {
+            background-color: #f0fdfa !important; border-color: #99f6e4 !important; color: #0d9488 !important;
+        }
+
+        /* ── Expander ──────────────────────────────────────────────── */
+        .stExpander {
+            background-color: var(--secondary-background-color) !important;
+            border: 1px solid rgba(128, 128, 128, 0.12) !important;
+            border-radius: 14px !important; margin: 10px 0 !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06) !important;
+        }
+        .stExpander > details > summary {
+            background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04)) !important;
+            border-bottom: 1px solid rgba(99,102,241,0.1) !important;
+            font-weight: 800 !important; font-size: 10.5px !important;
+            letter-spacing: 0.12em !important; text-transform: uppercase !important;
+            padding: 14px 20px !important; cursor: pointer !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: var(--text-color) !important; opacity: 1 !important;
+            transition: all 0.2s !important;
+        }
+        .stExpander > details > summary:hover {
+            background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.07)) !important;
+        }
+
+        /* ── File Uploader ─────────────────────────────────────────── */
+        div[data-testid="stFileUploader"] { width: 100% !important; }
+        div[data-testid="stFileUploader"] > section {
+            background: rgba(99,102,241,0.02) !important;
+            border: 1.5px dashed rgba(99,102,241,0.25) !important;
+            border-radius: 14px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            padding: 20px 16px !important;
+        }
+        div[data-testid="stFileUploader"] > section:hover {
+            border-color: #6366f1 !important;
+            background: rgba(99, 102, 241, 0.05) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 24px rgba(99,102,241,0.1) !important;
+        }
+        div[data-testid="stFileUploader"] small { display: none !important; }
+
+        /* ── Primary Button (Main Area) ── */
+        [data-testid="stMainBlockContainer"] button[kind="primary"] {
+            background: linear-gradient(135deg, #1e293b, #6366f1) !important;
+            color: #fff !important; border: none !important; border-radius: 8px !important;
+            font-size: 13px !important; font-weight: 600 !important; padding: 10px 24px !important;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15) !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: -0.01em !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+        [data-testid="stMainBlockContainer"] button[kind="primary"]:hover {
+            filter: brightness(1.08) !important; transform: translateY(-1.5px) !important;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25) !important;
+        }
+        [data-testid="stMainBlockContainer"] button[kind="primary"]:disabled {
+            background: #e2e8f0 !important;  opacity: 0.8; color: #94a3b8 !important;
+            box-shadow: none !important; transform: none !important; border: 1px solid rgba(128, 128, 128, 0.1) !important;
+        }
+        button[kind="secondary"] {
+            background: var(--secondary-background-color) !important;
+            border: 1px solid rgba(148, 163, 184, 0.2) !important; border-radius: 8px !important;
+            font-size: 12.5px !important; font-weight: 500 !important; padding: 8px 16px !important;
+            transition: all 0.2s !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: var(--text-color) !important;
+        }
+        button[kind="secondary"]:hover { 
+            border-color: rgba(99, 102, 241, 0.3) !important;
+            background: rgba(99, 102, 241, 0.02) !important;
+            color: #6366f1 !important;
+        }
+
+        /* ── Sidebar Labels & History ── */
+        .nav-label, .sb-hist-label {
+            font-size: 10px; font-weight: 700; color: var(--text-color); opacity: 0.6;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; margin-top: 10px;
+        }
+        .sb-hist-item {
+            padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s; margin-bottom: 4px;
+        }
+        .sb-hist-item:hover { background: var(--background-color); }
+        .sb-hist-name { font-size: 12px; font-weight: 600; color: var(--text-color); opacity: 0.9; }
+        .sb-hist-meta { font-size: 10px; color: var(--text-color); opacity: 0.6; margin-top: 4px; }
+        .sb-hist-empty { font-size: 11px; color: var(--text-color); opacity: 0.6; padding-left: 4px; }
+
+        /* ── Sidebar Navigation Buttons ── */
+        section[data-testid="stSidebar"] button[kind="primary"],
+        section[data-testid="stSidebar"] button[kind="secondary"] {
+            width: 100% !important; text-align: left !important;
+            justify-content: flex-start !important; padding: 10px 12px !important;
+            border-radius: 10px !important; font-size: 13px !important; font-weight: 600 !important;
+            border: none !important; box-shadow: none !important; margin-bottom: 4px !important;
+            transition: all 0.15s ease !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            background: rgba(8,145,178,0.1) !important;
+            color: #0891b2 !important;
+        }
+        section[data-testid="stSidebar"] button[kind="primary"] * {
+            color: #0891b2 !important;
+        }
+        section[data-testid="stSidebar"] button[kind="secondary"] {
+            background: transparent !important;
+            color: var(--text-color) !important;
+            opacity: 0.7 !important;
+        }
+        section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background: var(--background-color) !important; 
+            opacity: 1 !important;
+        }
+
+        /* ── Settings Profile Area ── */
+        .profile-card {
+            display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+            background: var(--background-color); border: 1px solid rgba(128, 128, 128, 0.1); border-radius: 12px;
+            margin-top: 24px; transition: all 0.2s; cursor: pointer;
+        }
+        .profile-card:hover { background: var(--background-color); border-color: rgba(128, 128, 128, 0.2); }
+        .profile-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #0d9488, #22d3ee);
+            color: #fff; font-weight: 800; font-size: 14px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .profile-info { flex-grow: 1; text-align: left; line-height: 1.2; }
+        .profile-name { font-size: 13px; font-weight: 700;  }
+        .profile-role { font-size: 11px;  opacity: 0.85; font-weight: 500; }
+        .settings-link {
+            display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+             opacity: 0.95; padding: 8px 12px; cursor: pointer; border-radius: 8px;
+            transition: all 0.15s; margin-top: 32px;
+        }
+        .settings-link:hover {  background: var(--background-color); }
+        .api-status {
+            display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+            padding: 4px 14px; margin-bottom: 8px;
+        }
+        .api-status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .api-connected { color: #10b981; }
+        .api-connected .api-status-dot { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+        .api-disconnected { color: #ef4444; }
+        .api-disconnected .api-status-dot { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+        .api-input-wrap { padding: 12px; background: var(--secondary-background-color); border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 10px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+
+
+        /* ── Tags ──────────────────────────────────────────────────── */
+        span[data-baseweb="tag"] {
+            background-color: rgba(99, 102, 241, 0.06) !important; color: #6366f1 !important;
+            border: 1px solid rgba(99, 102, 241, 0.18) !important; border-radius: 5px !important; font-weight: 600 !important;
+        }
+        span[data-baseweb="tag"] span { color: #6366f1 !important; }
+        li[role="option"] {  background-color: var(--background-color) !important; }
+        li[role="option"]:hover { background-color: rgba(99, 102, 241, 0.03) !important; }
+        li[role="option"][aria-selected="true"] { background-color: rgba(99, 102, 241, 0.08) !important; color: #6366f1 !important; font-weight: 700 !important; }
+        ul[data-testid="stMultiSelectDropdown"] {
+            border: 1px solid rgba(128, 128, 128, 0.15) !important; border-radius: 10px !important;
+            background-color: var(--background-color) !important; box-shadow: 0 12px 40px rgba(0,0,0,0.08) !important; overflow: hidden;
+        }
+
+        /* ── Hero ──────────────────────────────────────────────────── */
+        .hero {
+            text-align: center !important;
+            padding: 24px 20px 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+        }
+        .h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 46px !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em !important;
+            line-height: 1.1 !important;
+            margin-bottom: 0px !important;
+            background: linear-gradient(90deg, #1e293b, #6366f1, #1e293b) !important;
+            background-size: 200% auto !important;
+            color: transparent !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            text-align: center !important;
+            display: inline-block !important;
+            text-transform: uppercase !important;
+            animation: shine 3s linear infinite !important;
+        }
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+        .sub {
+            display: none !important;
+        }
+
+        /* ── Cards & Containers (Glassmorphism) ─────────────────────────────────────────────────── */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker) {
+            background-color: var(--secondary-background-color) !important;
+            background: var(--secondary-background-color) !important;
+            backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(128, 128, 128, 0.12) !important;
+            border-radius: 16px !important; padding: 22px 24px !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            margin-bottom: 14px;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        /* Glowing top accent line per card */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker)::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            height: 3px !important;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1, #22d3ee) !important;
+            border-radius: 16px 16px 0 0 !important;
+            opacity: 0.7 !important;
+            transition: opacity 0.3s !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker):hover::before {
+            opacity: 1 !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker):hover {
+            border-color: rgba(99, 102, 241, 0.25) !important;
+            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
+            transform: translateY(-3px) !important;
+        }
+        /* Make inner Streamlit layout containers of glass card completely transparent */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.custom-card-marker) div {
+            background-color: transparent !important;
+            background: transparent !important;
+            border-color: transparent !important;
+        }
+        /* Hide the marker itself */
+        .custom-card-marker {
+            display: none !important;
+            height: 0 !important;
+            width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .c-eye {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 9.5px; font-weight: 800; letter-spacing: 0.14em;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px; display: inline-block;
+        }
+        .c-ttl {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 15px; font-weight: 700;
+            margin-bottom: 16px; letter-spacing: -0.02em;
+            border-left: 3px solid transparent !important;
+            border-image: linear-gradient(180deg, #8b5cf6, #6366f1, #22d3ee) 1 !important;
+            padding-left: 10px; line-height: 1.3;
+        }
+        .divider { height: 1px; margin: 12px 0 28px; background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.15), rgba(139,92,246,0.1), transparent) !important; }
+
+        /* ── Output Cards ──────────────────────────────────────────── */
+        .output-card {
+            background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important;
+            border-radius: 16px; padding: 36px 32px; margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important; line-height: 1.8;
+        }
+        .output-card h3 { font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 15px; font-weight: 700; margin: 28px 0 14px;  border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; letter-spacing: -0.01em; text-transform: uppercase; }
+        .output-card p, .output-card li { font-size: 14px;  opacity: 0.95; margin-bottom: 6px; }
+
+        /* ── Details/Summary ───────────────────────────────────────── */
+        details { background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important; border-radius: 10px !important; margin-top: 12px !important; overflow: hidden !important; transition: all 0.25s !important; }
+        details[open] { border-color: rgba(13,148,136,0.22) !important; box-shadow: 0 4px 16px rgba(13,148,136,0.06) !important; }
+        summary { padding: 13px 18px !important; cursor: pointer !important; font-weight: 700 !important; font-size: 12px !important; color: #0d9488 !important; background: rgba(13,148,136,0.03) !important; display: flex !important; align-items: center !important; gap: 8px !important; outline: none !important; list-style: none !important; user-select: none !important; transition: background 0.15s !important; letter-spacing: 0.04em !important; text-transform: uppercase !important; }
+        summary:hover { background: rgba(13,148,136,0.06) !important; }
+        summary::-webkit-details-marker { display: none; }
+        details > *:not(summary) { padding: 14px 18px 18px !important; animation: slideDown 0.2s ease-out; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ── Badges ────────────────────────────────────────────────── */
+        .badge { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'JetBrains Mono', monospace !important; }
+        .badge-fail     { background: #fef2f2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; }
+        .badge-review   { background: #fffbeb !important; color: #d97706 !important; border: 1px solid #fcd34d !important; }
+        .badge-verified { background: #f0fdf4 !important; color: #16a34a !important; border: 1px solid #86efac !important; }
+        .section-accent { border-left: 3px solid transparent !important; padding: 16px 20px !important; margin: 20px 0 !important; border-radius: 0 8px 8px 0 !important; }
+        .accent-fail     { border-left-color: #dc2626 !important; background: rgba(220,38,38,0.02) !important; }
+        .accent-review   { border-left-color: #f59e0b !important; background: rgba(245,158,11,0.02) !important; }
+        .accent-verified { border-left-color: #22c55e !important; background: rgba(34,197,94,0.02) !important; }
+
+        /* ── Output Section Tables ─────────────────────────────────── */
+        .output-section { background: var(--background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important; border-radius: 12px !important; padding: 22px !important; margin-bottom: 10px !important; line-height: 1.8; }
+        .output-section h3 { background: rgba(13,148,136,0.04) !important; border-left: 3px solid #0d9488 !important;  font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 12px !important; font-weight: 700 !important; letter-spacing: 0.05em !important; text-transform: uppercase !important; padding: 7px 14px !important; margin: 24px 0 14px 0 !important; border-bottom: none !important; border-radius: 0 4px 4px 0 !important; display: block !important; }
+        .output-section h3:first-child { margin-top: 0 !important; }
+        .output-section p, .output-section li {  opacity: 0.95; margin: 6px 0; font-size: 14px; }
+        .output-section table { width: 100% !important; border-collapse: collapse !important; border: 1px solid rgba(128, 128, 128, 0.2) !important; border-radius: 8px !important; overflow: hidden !important; margin: 14px 0 !important; background: var(--secondary-background-color) !important; }
+        .output-section th { background: var(--background-color) !important;  opacity: 0.85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; font-size: 10px; padding: 11px 14px; border-bottom: 1px solid rgba(128, 128, 128, 0.2) !important; }
+        .output-section td { padding: 11px 14px; border-bottom: 1px solid rgba(128, 128, 128, 0.1) !important; vertical-align: top;  line-height: 1.6; }
+        .output-section tr:last-child td { border-bottom: none; }
+        .output-section tr:nth-child(even) td { background: rgba(128, 128, 128, 0.05) !important; }
+        .output-section code { background: rgba(220,38,38,0.05) !important; color: #dc2626 !important; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; border: 1px solid rgba(220,38,38,0.12) !important; }
+
+        /* ── Score Card ────────────────────────────────────────────── */
+        .score-card { background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.1) !important; border-top: 3px solid #0d9488 !important; border-radius: 12px !important; padding: 18px 22px !important; margin-bottom: 14px !important; box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important; }
+        .score-number { font-family: 'JetBrains Mono', monospace !important; font-size: 38px; font-weight: 700; color: #0d9488; letter-spacing: -0.03em; line-height: 1; }
+        .score-label  { font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;  opacity: 0.85; margin-bottom: 4px; }
+        .audit-done-banner { display: flex; align-items: center; gap: 10px; background: #f0fdf4 !important; border: 1px solid #86efac !important; border-left: 4px solid #22c55e !important; border-radius: 8px; padding: 11px 16px; color: #16a34a; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+        .audit-done-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+
+        /* ── Code Block ────────────────────────────────────────────── */
+        [data-testid="stCodeBlock"] { background-color: var(--background-color) !important; border-radius: 8px !important; border: 1px solid rgba(128, 128, 128, 0.2) !important; margin: 0 !important; }
+        [data-testid="stCodeBlock"] code {  font-family: 'JetBrains Mono', monospace !important; font-size: 12.5px !important; line-height: 1.7 !important; }
+
+        /* ── Processing Modal ──────────────────────────────────────── */
+        .fixed-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(15,23,42,0.55); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); z-index: 999998;
+            animation: overlayFadeIn 0.3s ease-out forwards;
+        }
+        .fixed-modal {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 16px; padding: 44px; width: 440px; max-width: 90vw;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.18) !important;
+            text-align: center; z-index: 999999;
+            background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.2) !important;
+             opacity: 0;
+            animation: modalSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        .fixed-modal h3 { font-family: 'Plus Jakarta Sans', sans-serif !important;  margin: 0 0 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+        .fixed-modal p  {  opacity: 0.85; margin: 0; font-size: 13px; }
+        .spinner-loader { border: 3px solid #ccfbf1; border-top: 3px solid #0d9488; border-radius: 50%; width: 44px; height: 44px; animation: spin 0.85s linear infinite; margin: 0 auto 22px auto; }
+        .progress-container { width: 100%; height: 5px; background: #ccfbf1; border-radius: 99px; margin: 22px 0 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #0d9488, #22d3ee); transition: width 0.4s cubic-bezier(0.1,0.8,0.1,1); border-radius: 99px; }
+        .perc-text { font-family: 'JetBrains Mono', monospace !important; font-size: 30px; font-weight: 600; color: #0d9488; margin-bottom: 4px; }
+
+        .cancel-btn-container { position: fixed !important; top: calc(50% + 148px) !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 1000000 !important; width: 200px !important; text-align: center !important; }
+        .cancel-btn-container button { background: var(--secondary-background-color) !important; color: #dc2626 !important; border: 1.5px solid #fee2e2 !important; border-radius: 9px !important; font-size: 12px !important; font-weight: 600 !important; padding: 9px 18px !important; transition: all 0.15s !important; width: 100% !important; font-family: 'Plus Jakarta Sans', sans-serif !important; }
+        .cancel-btn-container button:hover { background: #fef2f2 !important; border-color: #fca5a5 !important; }
+
+        /* ── Animations ────────────────────────────────────────────── */
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes overlayFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes modalSlideIn { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.94); } 100% { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        .first-run-anim { opacity:0; animation: fadeUp 0.4s cubic-bezier(0.2,0.8,0.2,1) forwards; }
+        .anim-delay-1 { animation-delay: 0.08s; }
+        .anim-delay-2 { animation-delay: 0.18s; }
+        .anim-delay-3 { animation-delay: 0.28s; }
+
+        /* ── App Selector Sidebar Header ───────────────────────────── */
+        .app-selector-header-container { background: var(--secondary-background-color) !important; border: 1px solid rgba(128, 128, 128, 0.15) !important; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 32px; transition: all 0.15s !important; cursor: pointer; position: relative; z-index: 5; }
+        .app-selector-header-container:hover { background: var(--background-color) !important; border-color: rgba(128, 128, 128, 0.25) !important; }
+        .app-selector-header { display: flex; align-items: center; gap: 12px; width: 100%; }
+        .logo-circle { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800; font-size: 13px; color: #ffffff !important; flex-shrink: 0; box-shadow: none !important; }
+        .da-logo { background: #8b5cf6 !important; }
+        .cc-logo { background: #6366f1 !important; }
+        .app-selector-header .text-block { flex-grow: 1; text-align: left; line-height: 1.2; }
+        .app-selector-header .main-title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700; font-size: 13px; letter-spacing: -0.01em;  }
+        .app-selector-header .sub-title { font-size: 10px;  opacity: 0.85; font-weight: 500; margin-top: 1px; }
+        .app-selector-header .chevron { font-size: 10px;  opacity: 0.3; flex-shrink: 0; }
+
+        /* ── Invisible Overlay Buttons via Sibling Selector ────────── */
+        /* Pull ALL popup DOM elements out of flex flow → zero height → no layout jump */
+        div[data-testid="stElementContainer"]:has(.app-popup-card),
+        div[data-testid="stElementContainer"]:has(.marker-popup-da),
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc),
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) {
+            position: absolute !important; width: 0 !important; height: 0 !important;
+            padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+        /* Also pull sibling button containers out of flow (they still contain fixed-position buttons) */
+        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] {
+            position: absolute !important; width: 0 !important; height: 0 !important;
+            padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+        /* Zero out the stMarkdownContainer inside the popup card wrapper */
+        div[data-testid="stElementContainer"]:has(.app-popup-card) [data-testid="stMarkdownContainer"] {
+            height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;
+        }
+
+        /* 1. Header Toggle */
+        div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] { margin-top: -96px !important; position: relative; z-index: 10; margin-bottom: 20px; }
+        div[data-testid="stElementContainer"]:has(.marker-toggle-app) + div[data-testid="stElementContainer"] button { background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; width: 100% !important; height: 80px !important; cursor: pointer !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        /* 2. Popup Item DA */
+        div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 110px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 99999999 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        /* 3. Popup Item CC */
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 178px !important; left: 276px !important; width: 294px !important; height: 62px !important; z-index: 99999999 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        /* 4. Backdrop Close */
+        div[data-testid="stElementContainer"]:has(.marker-close-bg) + div[data-testid="stElementContainer"] button { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 99999900 !important; background: transparent !important; color: transparent !important; border: none !important; box-shadow: none !important; cursor: pointer !important; margin: 0 !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+
+        /* ── Popup Card ────────────────────────────────────────────── */
+        .app-popup-card {
+            position: fixed;
+            top: 58px;
+            left: 270px;
+            width: 310px;
+            background-color: var(--secondary-background-color) !important;
+            background: var(--secondary-background-color) !important;
+            opacity: 1 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid rgba(128, 128, 128, 0.2) !important;
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18) !important;
+            z-index: 99999990 !important; /* Sit on top of backdrop but below the overlay buttons */
+        }
+        
+        /* Force parent containers to remain solid and visible */
+        div[data-testid="stElementContainer"]:has(.app-popup-card),
+        div[data-testid="stElementContainer"]:has(.marker-close-bg),
+        div[data-testid="stElementContainer"]:has(.marker-popup-da),
+        div[data-testid="stElementContainer"]:has(.marker-popup-cc),
+        div[data-testid="stSidebarUserContent"]:has(.app-popup-card) {
+            opacity: 1 !important;
+            visibility: visible !important;
+            filter: none !important;
+            overflow: visible !important;
+        }
+
+        .popup-header { display: flex; align-items: center; gap: 9px; padding: 3px 5px 10px 5px; }
+        .popup-header .building-icon { font-size: 15px; color: #6366f1 !important; }
+        .popup-header .header-text { line-height: 1.2; text-align: left; }
+        .popup-header .title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 12px; font-weight: 800;  letter-spacing: 0.04em; text-transform: uppercase; }
+        .popup-header .subtitle { font-size: 10.5px;  opacity: 0.85; }
+        .divider-line { height: 1px; background: var(--background-color) !important; margin: 0 0 8px 0; }
+        .app-item-card { display: flex; align-items: center; gap: 11px; padding: 11px; border-radius: 10px; background: transparent; border: 1px solid transparent; transition: all 0.15s !important; margin-bottom: 6px; position: relative; }
+        .app-item-card:hover { background: var(--background-color) !important; border-color: rgba(128, 128, 128, 0.1) !important; }
+        .app-item-card.active-item { background: rgba(99, 102, 241, 0.06) !important; border-color: rgba(99, 102, 241, 0.2) !important; }
+        .app-item-card .item-text { flex-grow: 1; text-align: left; line-height: 1.3; }
+        .app-item-card .item-title { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700; font-size: 12px;  }
+        .app-item-card.active-item .item-title { color: #6366f1 !important; }
+        .app-item-card .item-subtitle { font-size: 10.5px;  opacity: 0.85; }
+        .app-item-card .active-badge { background: #6366f1 !important; color: #ffffff !important; font-size: 8.5px !important; font-weight: 700 !important; padding: 3px 8px !important; border-radius: 20px !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; flex-shrink: 0; }
+
+        /* ── Mobile Responsiveness ─────────────────────────────────── */
+        @media (max-width: 768px) {
+            .app-popup-card {
+                left: 5vw !important;
+                width: 90vw !important;
+                top: 120px !important;
+                z-index: 99999999 !important; /* Topmost stack */
+                opacity: 1 !important;
+                background-color: var(--secondary-background-color) !important;
+                background: var(--secondary-background-color) !important;
+            }
+            div[data-testid="stElementContainer"]:has(.marker-popup-da) + div[data-testid="stElementContainer"] button {
+                left: calc(5vw + 14px) !important;
+                width: calc(90vw - 28px) !important;
+                top: 178px !important;
+                z-index: 99999999 !important;
+            }
+            div[data-testid="stElementContainer"]:has(.marker-popup-cc) + div[data-testid="stElementContainer"] button {
+                left: calc(5vw + 14px) !important;
+                width: calc(90vw - 28px) !important;
+                top: 242px !important;
+                z-index: 99999999 !important;
+            }
+        }
+
+        /* ── Checkbox as Pill Toggle ── */
+        div[data-testid="stCheckbox"] {
+            display: inline-block !important;
+            margin-top: 8px !important;
+            margin-bottom: 12px !important;
+        }
+        div[data-testid="stCheckbox"] label {
+            background-color: var(--secondary-background-color) !important;
+            border: 1.5px solid rgba(148, 163, 184, 0.15) !important;
+            padding: 10px 18px 10px 14px !important;
+            border-radius: 30px !important; /* Premium rounded pill */
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            cursor: pointer !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+        }
+        div[data-testid="stCheckbox"] label:hover {
+            border-color: rgba(99, 102, 241, 0.35) !important;
+            background-color: rgba(99, 102, 241, 0.03) !important;
+            transform: translateY(-1.5px) !important;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08) !important;
+        }
+        div[data-testid="stCheckbox"] input[type="checkbox"] {
+            accent-color: #6366f1 !important; /* Indigo accent color */
+            width: 16px !important;
+            height: 16px !important;
+            cursor: pointer !important;
+        }
+        div[data-testid="stCheckbox"] p {
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
+            color: var(--text-color) !important;
+            margin: 0 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
