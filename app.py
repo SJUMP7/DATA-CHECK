@@ -75,7 +75,7 @@ def main():
     
     # ─── Dynamic Module Loading for COMPARE CONTRACT ─────────────────────────────
     if "active_app" not in st.session_state:
-        st.session_state.active_app = "DATA AUDITOR"
+        st.session_state.active_app = "CONTRACT COMPARE"
     
     if "app_selector_open" not in st.session_state:
         st.session_state.app_selector_open = False
@@ -210,7 +210,7 @@ def main():
     # ─── SAFE DEFAULTS (prevent NameError if sidebar errors) ─────────────────────
     saved_key = load_key()
     api_key = saved_key
-    selected_page = st.session_state.get("selected_page", "CONTRACT AUDITOR")
+    selected_page = st.session_state.get("selected_page", "CONTRACT COMPARE")
 
     with st.sidebar:
         # ─── Sidebar Selector Markup and Overlays ───
@@ -251,7 +251,7 @@ def main():
         st.markdown('<div class="nav-label">Navigation</div>', unsafe_allow_html=True)
 
         if "selected_page" not in st.session_state:
-            st.session_state.selected_page = "CONTRACT AUDITOR"
+            st.session_state.selected_page = "CONTRACT COMPARE" if st.session_state.active_app == "CONTRACT COMPARE" else "CONTRACT AUDITOR"
 
         if active_app == "DATA AUDITOR":
             page_options = ["CONTRACT AUDITOR", "AI EXCEL GENERATOR"]
@@ -554,7 +554,7 @@ def main():
         /* Override primary theme with Purple/Fuchsia gradient for Data Auditor */
         .c-eye { color: #8b5cf6 !important; }
         .c-ttl { border-left-color: #8b5cf6 !important; }
-        .h1 { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+        .h1 { background: linear-gradient(90deg, #8b5cf6, #d946ef, #8b5cf6) !important; background-size: 200% auto !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; animation: shine 3s linear infinite !important; }
         [data-testid="stMainBlockContainer"] button[kind="primary"] { background: linear-gradient(135deg, #8b5cf6, #d946ef) !important; box-shadow: 0 4px 14px rgba(139,92,246,0.25) !important; }
         [data-testid="stMainBlockContainer"] button[kind="primary"]:hover { box-shadow: 0 6px 20px rgba(139,92,246,0.35) !important; }
         .score-number { color: #8b5cf6 !important; }
