@@ -145,11 +145,26 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
               fill=_YELLOW if season_name else _LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         row += 1
 
-        cond_raw = season.get("conditions") or []
-        if isinstance(cond_raw, list):
-            cond_lines = cond_raw
-        else:
-            cond_lines = str(cond_raw).split('\n')
+        # Fallback: support old single-array 'conditions' key for cached data
+        cond_1_raw = season.get("conditions_1") if season.get("conditions_1") is not None else season.get("conditions") or []
+        cond_2_raw = season.get("conditions_2") or []
+        cond_3_raw = season.get("conditions_3") or []
+        cond_1 = cond_1_raw if isinstance(cond_1_raw, list) else str(cond_1_raw).split("\n")
+        cond_2 = cond_2_raw if isinstance(cond_2_raw, list) else str(cond_2_raw).split("\n")
+        cond_3 = cond_3_raw if isinstance(cond_3_raw, list) else str(cond_3_raw).split("\n")
+        cond_lines = []
+        for line in cond_1:
+            line = line.strip()
+            if line:
+                cond_lines.append(f"Contract {year_1}: {line}")
+        for line in cond_2:
+            line = line.strip()
+            if line:
+                cond_lines.append(f"Contract {year_2}: {line}")
+        for line in cond_3:
+            line = line.strip()
+            if line:
+                cond_lines.append(f"Contract {year_3}: {line}")
         
         rooms = season.get("rooms") or []
         for i, rm in enumerate(rooms):
@@ -482,12 +497,20 @@ def generate_comparison_excel(data: dict) -> bytes:
               fill=_YELLOW if season_name else _LGRAY, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         row += 1
 
-        # Conditions for the season can go to Col F on the first room row
-        cond_raw = season.get("conditions") or []
-        if isinstance(cond_raw, list):
-            cond_lines = cond_raw
-        else:
-            cond_lines = str(cond_raw).split('\n')
+        # Fallback: support old single-array 'conditions' key for cached data
+        cond_1_raw = season.get("conditions_1") if season.get("conditions_1") is not None else season.get("conditions") or []
+        cond_2_raw = season.get("conditions_2") or []
+        cond_1 = cond_1_raw if isinstance(cond_1_raw, list) else str(cond_1_raw).split("\n")
+        cond_2 = cond_2_raw if isinstance(cond_2_raw, list) else str(cond_2_raw).split("\n")
+        cond_lines = []
+        for line in cond_1:
+            line = line.strip()
+            if line:
+                cond_lines.append(f"Contract {year_1}: {line}")
+        for line in cond_2:
+            line = line.strip()
+            if line:
+                cond_lines.append(f"Contract {year_2}: {line}")
         
         rooms = season.get("rooms") or []
         for i, rm in enumerate(rooms):
