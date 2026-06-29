@@ -39,7 +39,8 @@ _response_schema = types.Schema(
                     "season_name": types.Schema(type=types.Type.STRING),
                     "period_1": types.Schema(type=types.Type.STRING),
                     "period_2": types.Schema(type=types.Type.STRING),
-                    "conditions": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
+                    "conditions_1": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
+                    "conditions_2": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
                     "rooms": types.Schema(
                         type=types.Type.ARRAY,
                         items=types.Schema(
@@ -53,7 +54,7 @@ _response_schema = types.Schema(
                         )
                     )
                 },
-                required=["season_name", "period_1", "period_2", "conditions", "rooms"]
+                required=["season_name", "period_1", "period_2", "conditions_1", "conditions_2", "rooms"]
             )
         ),
         "extra_bed": types.Schema(type=types.Type.ARRAY, items=_policy_schema),
@@ -99,7 +100,9 @@ _revise_response_schema = types.Schema(
                     "period_1": types.Schema(type=types.Type.STRING),
                     "period_2": types.Schema(type=types.Type.STRING),
                     "period_3": types.Schema(type=types.Type.STRING),
-                    "conditions": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
+                    "conditions_1": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
+                    "conditions_2": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
+                    "conditions_3": types.Schema(type=types.Type.ARRAY, items=types.Schema(type=types.Type.STRING)),
                     "rooms": types.Schema(
                         type=types.Type.ARRAY,
                         items=types.Schema(
@@ -114,7 +117,7 @@ _revise_response_schema = types.Schema(
                         )
                     )
                 },
-                required=["season_name", "period_1", "period_2", "period_3", "conditions", "rooms"]
+                required=["season_name", "period_1", "period_2", "period_3", "conditions_1", "conditions_2", "conditions_3", "rooms"]
             )
         ),
         "extra_bed": types.Schema(type=types.Type.ARRAY, items=_revise_policy_schema),
