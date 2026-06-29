@@ -574,6 +574,14 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                     st.session_state.cc_review_mode = False
                     st.session_state.cc_report_ready = False
                     st.session_state.cc_extracted_data = None
+                    # Fix: ล้าง PDF cache และ Excel cache ไม่งั้นจะใช้ข้อมูลเก่าต่อ
+                    st.session_state.pop("cc_pdf1_bytes", None)
+                    st.session_state.pop("cc_pdf2_bytes", None)
+                    st.session_state.pop("cc_pdf3_bytes", None)
+                    st.session_state.pop("cc_pdf1_name", None)
+                    st.session_state.pop("cc_pdf2_name", None)
+                    st.session_state.pop("cc_pdf3_name", None)
+                    st.session_state.pop("cc_excel_bytes", None)
                     st.rerun()
 
             st.markdown("""</div>
@@ -594,20 +602,21 @@ def render_page_compare(api_key, compare_utils, compare_excel):
                     '<span class="cc-badge-changed">Updated</span>' if _changed
                     else '<span class="cc-badge-same">Same</span>'
                 )
-                _rows_html += f"""
-                <div class="cc-sec-row">
-                    <div class="cc-sec-dot"></div>
-                    <div class="cc-sec-name">{_label}</div>
-                    {_badge}
-                </div>"""
+                _rows_html += (
+                    f'<div class="cc-sec-row">'
+                    f'<div class="cc-sec-dot"></div>'
+                    f'<div class="cc-sec-name">{_label}</div>'
+                    f'{_badge}'
+                    f'</div>'
+                )
 
-            st.markdown(f"""
-            <div class="cc-sections">
-                <div class="cc-sec-hdr">Report contents</div>
-                {_rows_html}
-            </div>
-            <br>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                '<div class="cc-sections">'
+                '<div class="cc-sec-hdr">Report contents</div>'
+                + _rows_html +
+                '</div><br>',
+                unsafe_allow_html=True
+            )
     
         st.stop()
     
