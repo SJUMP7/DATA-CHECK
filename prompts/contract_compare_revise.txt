@@ -13,7 +13,9 @@ CRITICAL JSON RULES:
 FORMATTING PATTERNS (STRICT!)
 ═══════════════════════════════════════════════
 1. **Season Conditions (for periods/seasons)**:
-   DO NOT copy paragraphs. Extract and format ONLY the key points as an array of strings using the '•' bullet point. ONLY include MIN NIGHTS, COMPULSORY dinners, CHECK OUT restrictions, and DAILY/WEEKEND/PEAK SURCHARGES:
+   DO NOT copy paragraphs. Extract and format ONLY the key points as an array of strings using the '•' bullet point. ONLY include MIN NIGHTS, COMPULSORY dinners, CHECK OUT restrictions, and DAILY/WEEKEND/PEAK SURCHARGES.
+   **CRITICAL: Separate conditions by contract.** Put Contract 1's conditions in `conditions_1`, Contract 2's in `conditions_2`, and Contract 3's in `conditions_3`. Do NOT merge them into one array.
+   Format each item as:
    - • MIN. [x] NIGHTS
    - • COMPULSORY [GALA DINNER / NEW YEAR] on [Date] = [Price] THB
    - • **NOT ALLOWED CHECK OUT on [Date] - [Date]**
@@ -138,9 +140,17 @@ RETURN THIS EXACT JSON STRUCTURE:
       "period_1": "1 NOV 24 - 23 DEC 24",
       "period_2": "1 NOV 25 - 23 DEC 25",
       "period_3": "1 NOV 25 - 23 DEC 25",
-      "conditions": [
-        "MIN. 3 NIGHTS",
-        "COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
+      "conditions_1": [
+        "• MIN. 3 NIGHTS",
+        "• COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
+      ],
+      "conditions_2": [
+        "• MIN. 3 NIGHTS",
+        "• COMPULSORY GALA DINNER on 31 DEC = 1500 THB"
+      ],
+      "conditions_3": [
+        "• MIN. 3 NIGHTS",
+        "• COMPULSORY GALA DINNER on 31 DEC = 1500 THB"
       ],
       "rooms": [
         {
