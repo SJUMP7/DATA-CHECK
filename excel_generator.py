@@ -76,8 +76,10 @@ def _fmt_nums(text: str) -> str:
     """Add comma separators to numbers >= 1,000 inside text strings.
     Skips numbers that follow date-related words (in, on, date, dates, year, etc.)
     because those are likely years, not prices.
+    Also skips all 20xx patterns (years 2000–2099) unconditionally.
     e.g. '1500 THB' -> '1,500 THB'
          'in 2025'  -> 'in 2025'  (unchanged)
+         '2026'     -> '2026'     (unchanged — year)
          'dates in 2025-2026' -> unchanged
     """
     import re
@@ -89,11 +91,15 @@ def _fmt_nums(text: str) -> str:
     )
 
     def _replace(m):
+        num_str = m.group(0)
+        # Bug 2 Fix: ปีค.ศ. 20xx (2000–2099) ไม่ใส่ลูกน้ำเด็ดขาด
+        if re.match(r'^20\d{2}$', num_str):
+            return num_str
         # Check the text *before* this match for date-related words
         prefix = text[:m.start()]
         if _DATE_PREFIX.search(prefix):
-            return m.group(0)          # looks like a year — leave as-is
-        return f"{int(m.group(0)):,}"  # price — add comma
+            return num_str             # looks like a year — leave as-is
+        return f"{int(num_str):,}"    # price — add comma
 
     return re.sub(r'\b\d{4,}\b', _replace, text)
 
@@ -341,10 +347,21 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
                 
         row += 1
 
-    def _build_sidebyside_section_revise(title, key):
+    def _build_sidebyside_section_revise(title, key, use_topic=False):
         nonlocal row
         items = data.get(key, [])
         if not items: return
+        # Bug 1 Fix: ข้ามถ้าทุก item ไม่มีข้อมูลจริง (contract_1, _2, _3 ว่างหมด)
+        if all(
+            not any(str(s).strip() for s in (item.get("contract_1") or []))
+            and not any(str(s).strip() for s in (item.get("contract_2") or []))
+            and not any(str(s).strip() for s in (item.get("contract_3") or []))
+            for item in items
+        ): return
+        # Bug 1b Fix: ถ้า use_topic=True ให้ดึงชื่อจาก topic ของ AI แทน hardcode
+        if use_topic:
+            first_topic = str(items[0].get("topic") or "").strip()
+            title = first_topic if first_topic else title
         
         _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
@@ -424,7 +441,8 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
     _build_stacked_section_revise("EXTRA BED / EXTRA PERSON", "extra_bed")
     _build_sidebyside_section_revise("EARLY BIRD OFFER", "early_bird")
     _build_sidebyside_section_revise("BONUS NIGHT OFFER", "bonus_night")
-    _build_sidebyside_section_revise("WELLBEING SANCTUARY POOL SUITE LONG STAY BENEFITS", "wellbeing")
+    # Bug 1b Fix: wellbeing ใช้ topic จาก AI แทน hardcode ชื่อเฉพาะโรงแรม
+    _build_sidebyside_section_revise("LONG STAY / WELLBEING BENEFITS", "wellbeing", use_topic=True)
     _build_sidebyside_section_revise("CANCELLATION", "cancellation")
     _build_sidebyside_section_revise("OTHER PROMOTIONS / CONDITIONS", "other_promotions")
 
@@ -652,12 +670,23 @@ def generate_comparison_excel(data: dict) -> bytes:
                 
         row += 1
 
-    def _build_sidebyside_section(title, key):
+    def _build_sidebyside_section(title, key, use_topic=False):
         nonlocal row
         items = data.get(key, [])
         if not items: return
-        
-        _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
+        # Bug 1 Fix: ข้ามถ้าทุก item ไม่มีข้อมูลจริง (contract_1 และ contract_2 ว่างหมด)
+        if all(
+            not any(str(s).strip() for s in (item.get("contract_1") or []))
+            and not any(str(s).strip() for s in (item.get("contract_2") or []))
+            for item in items
+        ): return
+        # Bug 1b Fix: ถ้า use_topic=True ให้ดึงชื่อจาก topic ของ AI แทน hardcode
+        if use_topic:
+            first_topic = str(items[0].get("topic") or "").strip()
+            display_title = first_topic if first_topic else title
+        else:
+            display_title = title
+        _cell(ws, row, 1, str(display_title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
         row += 1
@@ -720,7 +749,8 @@ def generate_comparison_excel(data: dict) -> bytes:
     # Early Bird, Bonus Night, Wellbeing, Cancellation, Other Promotions are side-by-side
     _build_sidebyside_section("EARLY BIRD OFFER", "early_bird")
     _build_sidebyside_section("BONUS NIGHT OFFER", "bonus_night")
-    _build_sidebyside_section("WELLBEING SANCTUARY POOL SUITE LONG STAY BENEFITS", "wellbeing")
+    # Bug 1b Fix: wellbeing ใช้ topic จาก AI แทน hardcode ชื่อเฉพาะโรงแรม
+    _build_sidebyside_section("LONG STAY / WELLBEING BENEFITS", "wellbeing", use_topic=True)
     _build_sidebyside_section("CANCELLATION", "cancellation")
     _build_sidebyside_section("OTHER PROMOTIONS / CONDITIONS", "other_promotions")
 
