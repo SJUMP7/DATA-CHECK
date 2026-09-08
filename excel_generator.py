@@ -104,6 +104,38 @@ def _fmt_nums(text: str) -> str:
     return re.sub(r'\b\d{4,}\b', _replace, text)
 
 
+# ─── Content guard helper ────────────────────────────────────────────────────
+_EMPTY_VALS = frozenset({'n/a', 'na', '-', '--', 'none', 'not applicable', 'not available', ''})
+
+def _has_real_content(lines) -> bool:
+    """ตรวจว่า list ของสตริงมีข้อมูลจริงหรือไม่ — คืน True ถ้ามีอย่างน้อยหนึ่ง string
+    ที่ไม่เป็น empty, N/A, -, none, not applicable เป็นต้น"""
+    if not lines:
+        return False
+        
+    import re
+    # Pattern to match negative responses from AI like:
+    # "• No wellbeing or spa promotions mentioned"
+    # "no promotions available"
+    # "not mentioned"
+    ignore_pattern = re.compile(
+        r'^(?:[-•*]\s*)?(?:no\s+.*(?:mentioned|available|offered|found)|not\s+(?:mentioned|available|offered|found)|none\s+mentioned)(?:\s*\.?)$',
+        re.IGNORECASE
+    )
+    
+    for s in lines:
+        s_str = str(s).strip()
+        if not s_str: continue
+        
+        s_lower = s_str.lower()
+        s_clean = re.sub(r'^[-•*]\s*', '', s_lower)
+        
+        if s_clean not in _EMPTY_VALS and not ignore_pattern.match(s_lower):
+            return True
+            
+    return False
+
+
 def _generate_revise_comparison_excel_data(wb, data: dict):
     ws = wb.active
     ws.title = "Comparison Report"
@@ -280,6 +312,13 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
         nonlocal row
         items = data.get(key, [])
         if not items: return
+        # Guard: ซ่อนถ้าทุก item ไม่มีข้อมูลจริง (รวมถึงกรณี N/A)
+        if all(
+            not _has_real_content(item.get("contract_1"))
+            and not _has_real_content(item.get("contract_2"))
+            and not _has_real_content(item.get("contract_3"))
+            for item in items
+        ): return
         
         _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 10): _cell(ws, row, c, "", border=_THIN)
@@ -351,11 +390,11 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
         nonlocal row
         items = data.get(key, [])
         if not items: return
-        # Bug 1 Fix: ข้ามถ้าทุก item ไม่มีข้อมูลจริง (contract_1, _2, _3 ว่างหมด)
+        # Guard: ซ่อนถ้าทุก item ไม่มีข้อมูลจริง (รวมถึงกรณี N/A)
         if all(
-            not any(str(s).strip() for s in (item.get("contract_1") or []))
-            and not any(str(s).strip() for s in (item.get("contract_2") or []))
-            and not any(str(s).strip() for s in (item.get("contract_3") or []))
+            not _has_real_content(item.get("contract_1"))
+            and not _has_real_content(item.get("contract_2"))
+            and not _has_real_content(item.get("contract_3"))
             for item in items
         ): return
         # Bug 1b Fix: ถ้า use_topic=True ให้ดึงชื่อจาก topic ของ AI แทน hardcode
@@ -618,6 +657,12 @@ def generate_comparison_excel(data: dict) -> bytes:
         nonlocal row
         items = data.get(key, [])
         if not items: return
+        # Guard: ซ่อนถ้าทุก item ไม่มีข้อมูลจริง (รวมถึงกรณี N/A)
+        if all(
+            not _has_real_content(item.get("contract_1"))
+            and not _has_real_content(item.get("contract_2"))
+            for item in items
+        ): return
         
         _cell(ws, row, 1, str(title).upper(), fill=_YELLOW, font=_BLACK_BOLD, align=_LEFT, border=_THIN)
         for c in range(2, 7): _cell(ws, row, c, "", border=_THIN)
@@ -674,10 +719,10 @@ def generate_comparison_excel(data: dict) -> bytes:
         nonlocal row
         items = data.get(key, [])
         if not items: return
-        # Bug 1 Fix: ข้ามถ้าทุก item ไม่มีข้อมูลจริง (contract_1 และ contract_2 ว่างหมด)
+        # Guard: ซ่อนถ้าทุก item ไม่มีข้อมูลจริง (รวมถึงกรณี N/A)
         if all(
-            not any(str(s).strip() for s in (item.get("contract_1") or []))
-            and not any(str(s).strip() for s in (item.get("contract_2") or []))
+            not _has_real_content(item.get("contract_1"))
+            and not _has_real_content(item.get("contract_2"))
             for item in items
         ): return
         # Bug 1b Fix: ถ้า use_topic=True ให้ดึงชื่อจาก topic ของ AI แทน hardcode
