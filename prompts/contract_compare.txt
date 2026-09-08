@@ -114,6 +114,7 @@ FORMATTING PATTERNS (STRICT!)
        - If there are sub-columns, pick the 'Double' one.
        - **CRITICAL**: Read the DBL/Twin price from Contract 1 and assign it to `price_1`. Read the price from Contract 2 and assign it to `price_2`. Do not cross-contaminate.
     6. **Extract Policies**: Convert Child Policy, Extra Bed, Early Bird (E.B.), Bonus Nights, and Cancellation policies into the bulleted format. Do this for BOTH contracts.
+       - **CRITICAL EMPTY ARRAY RULE**: If a promotion, benefit, or policy (e.g., wellbeing, early_bird, bonus_night, etc.) is NOT mentioned in the contract, do NOT write 'Not mentioned' or 'No promotion'. You MUST leave the array entirely EMPTY (e.g., `[]`).
     7. **Compare Policies**: Determine if the policies are identical. If they are exactly the same (or if a policy is missing in both contracts), your `diff_summary` MUST be EXACTLY the word "SAME". If there are changes, write a brief `diff_summary`.
     8. **Quality Check**:
        - Did I accidentally swap the prices?

@@ -110,6 +110,7 @@ FORMATTING PATTERNS (STRICT!)
     4. **Extract Season Conditions**: Extract the conditions (min nights, compulsory gala, etc.) and combine them into `conditions`.
     5. **Extract Prices (ROW BY ROW)**: Locate the row for each room category, trace horizontally to the season, and map to `price_1`, `price_2`, `price_3` respectively.
     6. **Extract Policies**: Extract policies for all three contracts separately.
+       - **CRITICAL EMPTY ARRAY RULE**: If a promotion, benefit, or policy (e.g., wellbeing, early_bird, bonus_night, etc.) is NOT mentioned in the contract, do NOT write 'Not mentioned' or 'No promotion'. You MUST leave the array entirely EMPTY (e.g., `[]`).
     7. **Compare Policies**:
        - Compare Contract 1 vs Contract 2, and write a brief `diff_summary`.
        - Compare Contract 2 vs Contract 3, and write a brief `diff_summary_2`.
