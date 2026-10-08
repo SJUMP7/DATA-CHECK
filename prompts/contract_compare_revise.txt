@@ -19,8 +19,10 @@ FORMATTING PATTERNS (STRICT!)
    - • MIN. [x] NIGHTS
    - • COMPULSORY [GALA DINNER / NEW YEAR] on [Date] = [Price] THB
    - • **NOT ALLOWED CHECK OUT on [Date] - [Date]**
-   - • Supplemental charge of [Price] net per room per night (or similar daily/nightly peak/festive/weekend surcharge)
-   (Note: Do NOT put other promotions like Full Moon Party here. Put them in the Other Promotions section.)
+   - • SUPPLEMENT CHARGED = [Price] THB per [room per night / ...] (for any daily/nightly peak/festive/weekend surcharge or supplemental charge; do NOT add it to the room rate)
+   **CRITICAL - MIN. NIGHTS SOURCE RULE**: Use `• MIN. [x] NIGHTS` ONLY when the contract states a minimum length of stay (e.g. 'minimum stay', 'min. X nights', 'minimum X nights stay required') for that specific season/period. Do NOT infer it from any other table or number.
+    **CRITICAL - IGNORE CUT-OFF / RELEASE PERIODS**: Terms such as 'Cut-off', 'Cut-off Period', 'Release period', 'Release days', 'Release date', 'Allotment release', 'Release of allotment', or similar describe how many days BEFORE CHECK-IN the hotel releases unsold allotment rooms. They are NOT a minimum stay. NEVER convert these numbers (e.g. 3 / 7 / 14 days by Low / High / Peak season) into MIN. NIGHTS or MIN. DAYS, and do NOT output them anywhere in `conditions_*` or any other field. If a season has no minimum-stay condition in the contract, leave its `conditions_*` without any MIN. line.
+    (Note: Do NOT put other promotions like Full Moon Party here. Put them in the Other Promotions section.)
 
 2. **Extra bed / Extra person / Child Policy**:
    Summarize using this exact format with the '•' bullet point.
@@ -83,21 +85,22 @@ FORMATTING PATTERNS (STRICT!)
       - NEVER use the year or dates from Contract 2 or 3 to fill in Contract 1's fields. If a season's dates vary between contracts, you MUST record the exact dates found in each respective document.
     - **DATE RANGE FORMAT (CRITICAL)**: All extracted period dates (`period_1`, `period_2`, `period_3`) MUST use uppercase 3-letter month abbreviations and 2-digit years.
       - EXACT FORMAT: `d MMM yy - d MMM yy` (e.g., `1 JAN 26 - 31 DEC 26`, `20 DEC 25 - 10 JAN 26`, `9 OCT 25 - 31 OCT 26`). Never use full month names like "November" or mixed cases like "Nov".
-    - **PERIOD SURCHARGE & COMPULSORY CHARGES RULE**: If a specific period or date range has a daily/nightly surcharge or supplemental charge (e.g., 'Supplemental charge of THB 1,000 net per room per night' or peak/festive/weekend surcharge per night), you MUST ADD this surcharge directly to the base room rate for that period (i.e., `Room Rate = Base Room Rate + Daily Surcharge`). However, you MUST NEVER add one-time compulsory event charges (such as a Compulsory Christmas Gala Dinner of 5,000 THB, or a Compulsory New Year Gala Dinner) to the room rate column. Keep compulsory event charges strictly as text items inside the `conditions` array of that season.
+    - **PERIOD SURCHARGE & COMPULSORY CHARGES RULE**: If a specific period or date range has a daily/nightly surcharge or supplemental charge (e.g., 'Supplemental charge of THB 1,000 net per room per night' or peak/festive/weekend surcharge per night), you MUST NOT add it to the room rate. The room rate column keeps the BASE room rate only (UPDATED RULE). Instead, split that date range into its own period (see CHRONOLOGICAL PERIOD SPLITTING) and write the surcharge as a text item in `conditions_1` / `conditions_2` / `conditions_3` of that split period using EXACTLY this format: `• SUPPLEMENT CHARGED = [Price] THB per [room / room per night / person ...]`. If the surcharge amount differs by room type (e.g. Prestige Signature 2,000 / Prestige Suite 3,000), write ONE line per room type in the same order as the rooms, e.g. `• SUPPLEMENT CHARGED = 2000 THB per room per night (PRESTIGE SIGNATURE)`. If every room has the same amount, write a single line. NEVER leave `conditions_*` empty when the contract shows a surcharge for that period. Likewise, one-time compulsory event charges (Compulsory Christmas / New Year Gala Dinner) are NEVER added to the room rate; keep them as text items in `conditions_*` of that season. (Ignore any older wording that says to add the surcharge to the rate.)
     - **CHRONOLOGICAL PERIOD SPLITTING (สับ PERIOD)**: You MUST split the season periods chronologically so they are strictly contiguous, non-overlapping, and listed in exact chronological order from earliest to latest. Do NOT output overlapping date ranges that cause dates to jump back and forth.
       - For example, if a base period is `1 OCT 26 - 31 OCT 26` (Standard Rate = 6,200) and there is a peak period/surcharge on `2 OCT 26 - 3 OCT 26` (Surcharge = 1,000). You MUST split this into three distinct, non-overlapping chronological periods:
         1. `1 OCT 26 - 1 OCT 26` (Rate = 6,200)
-        2. `2 OCT 26 - 3 OCT 26` (Rate = 6,200 + 1,000 = 7,200)
+        2. `2 OCT 26 - 3 OCT 26` (Rate = 6,200, conditions: `• SUPPLEMENT CHARGED = 1000 THB per room per night`)
         3. `4 OCT 26 - 31 OCT 26` (Rate = 6,200)
       - Similarly, if the main season is `1 NOV 25 - 31 OCT 26` and Christmas/New Year peak period is `20 DEC 25 - 3 JAN 26` (Surcharge = 1,000). Split the main season chronologically into:
         1. `1 NOV 25 - 19 DEC 25` (Base Rate)
-        2. `20 DEC 25 - 3 JAN 26` (Base Rate + 1,000 Surcharge)
+        2. `20 DEC 25 - 3 JAN 26` (Base Rate only, conditions: `• SUPPLEMENT CHARGED = 1000 THB per room per night`)
         3. `4 JAN 26 - 31 OCT 26` (Base Rate)
       This chronological slicing ensures the excel sheet rate rows follow a clean, contiguous flow without jumps or overlaps.
     - **VERIFY INTERSECTION**: For each price, mentally verify: "Does the value exactly match the intersection of this specific Room (Row) and Season (Column)? Did I copy correctly?"
     - **MISSING PRICE**: If a room type only exists in some contracts and not others, use "N/A" for the missing price field. If the contract says "on request", use "on request only".
 
 8. **Season Alignment (CRITICAL)**:
+    - **SEASON NAME FORMAT (CRITICAL)**: `season_name` MUST contain ONLY the season name exactly as the contract's own season identifier, in uppercase, e.g. `LOW SEASON`, `HIGH SEASON`, `PEAK SEASON`. If the contract distinguishes seasons with a numbering/lettering identifier (e.g. `HIGH I`, `HIGH II`, `SEASON I`, `SEASON 2`, `PEAK A`, `SHOULDER SEASON`), KEEP that identifier exactly as written. ONLY remove extra descriptive text in parentheses or brackets that merely explains the period, such as '(EARLY WINTER)', '(CHRISTMAS/NEW YEAR)', '(POST NEW YEAR)', '(MID-FEBRUARY)'. Examples: 'High Season (Early Winter)' -> `HIGH SEASON`; 'High II (Christmas)' -> `HIGH II`; 'Season I' -> `SEASON I`. Dropped descriptors must not be moved elsewhere.
     - Match seasons between contracts by NAME or approximate DATE RANGE.
     - Align the seasons across all three contracts. If a season is missing in any contract, use "N/A" for its period and prices in that contract.
     - NEVER leave `period_1`, `period_2`, or `period_3` blank. Always use "N/A" as the fallback.
@@ -142,15 +145,15 @@ RETURN THIS EXACT JSON STRUCTURE:
       "period_2": "1 NOV 25 - 23 DEC 25",
       "period_3": "1 NOV 25 - 23 DEC 25",
       "conditions_1": [
-        "• MIN. 3 NIGHTS",
+        "• MIN. 2 NIGHTS",
         "• COMPULSORY GALA DINNER on 31 DEC = 1000 THB"
       ],
       "conditions_2": [
-        "• MIN. 3 NIGHTS",
+        "• MIN. 2 NIGHTS",
         "• COMPULSORY GALA DINNER on 31 DEC = 1500 THB"
       ],
       "conditions_3": [
-        "• MIN. 3 NIGHTS",
+        "• MIN. 2 NIGHTS",
         "• COMPULSORY GALA DINNER on 31 DEC = 1500 THB"
       ],
       "rooms": [
