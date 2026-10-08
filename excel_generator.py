@@ -136,6 +136,38 @@ def _has_real_content(lines) -> bool:
     return False
 
 
+def _merge_condition_lines(contract_conditions) -> list:
+    """รวมเงื่อนไข (คอลัมน์ Remark) ของหลายสัญญา — ถ้าข้อความบรรทัดเดียวกันเหมือนกันทุกตัวอักษร
+    (ไม่สนช่องว่างส่วนเกิน/ตัวพิมพ์เล็ก-ใหญ่) ในหลายสัญญา จะรวมเป็นบรรทัดเดียว เช่น
+    'Contract 25/26 & 26/27: • ...' บรรทัดที่ต่างกันจะแยกเหมือนเดิม
+
+    contract_conditions: list ของ (year_label, [lines]) เรียงตามลำดับสัญญา
+    """
+    def _norm(s):
+        return " ".join(str(s).split()).lower()
+
+    cleaned = []
+    for year, lines in contract_conditions:
+        cleaned.append((str(year), [str(l).strip() for l in (lines or []) if str(l).strip()]))
+
+    result = []
+    used = [set() for _ in cleaned]  # (index ของบรรทัด) ที่ถูกรวมไปแล้วในแต่ละสัญญา
+    for ci, (year, lines) in enumerate(cleaned):
+        for li, line in enumerate(lines):
+            if li in used[ci]:
+                continue
+            labels = [year]
+            for cj in range(ci + 1, len(cleaned)):
+                for lj, other in enumerate(cleaned[cj][1]):
+                    if lj not in used[cj] and _norm(other) == _norm(line):
+                        used[cj].add(lj)
+                        labels.append(cleaned[cj][0])
+                        break
+            result.append(f"Contract {' & '.join(labels)}: {line}")
+    return result
+
+
+
 def _generate_revise_comparison_excel_data(wb, data: dict):
     ws = wb.active
     ws.title = "Comparison Report"
@@ -190,19 +222,7 @@ def _generate_revise_comparison_excel_data(wb, data: dict):
         cond_1 = cond_1_raw if isinstance(cond_1_raw, list) else str(cond_1_raw).split("\n")
         cond_2 = cond_2_raw if isinstance(cond_2_raw, list) else str(cond_2_raw).split("\n")
         cond_3 = cond_3_raw if isinstance(cond_3_raw, list) else str(cond_3_raw).split("\n")
-        cond_lines = []
-        for line in cond_1:
-            line = line.strip()
-            if line:
-                cond_lines.append(f"Contract {year_1}: {line}")
-        for line in cond_2:
-            line = line.strip()
-            if line:
-                cond_lines.append(f"Contract {year_2}: {line}")
-        for line in cond_3:
-            line = line.strip()
-            if line:
-                cond_lines.append(f"Contract {year_3}: {line}")
+        cond_lines = _merge_condition_lines([(year_1, cond_1), (year_2, cond_2), (year_3, cond_3)])
         
         rooms = season.get("rooms") or []
         for i, rm in enumerate(rooms):
@@ -559,15 +579,7 @@ def generate_comparison_excel(data: dict) -> bytes:
         cond_2_raw = season.get("conditions_2") or []
         cond_1 = cond_1_raw if isinstance(cond_1_raw, list) else str(cond_1_raw).split("\n")
         cond_2 = cond_2_raw if isinstance(cond_2_raw, list) else str(cond_2_raw).split("\n")
-        cond_lines = []
-        for line in cond_1:
-            line = line.strip()
-            if line:
-                cond_lines.append(f"Contract {year_1}: {line}")
-        for line in cond_2:
-            line = line.strip()
-            if line:
-                cond_lines.append(f"Contract {year_2}: {line}")
+        cond_lines = _merge_condition_lines([(year_1, cond_1), (year_2, cond_2)])
         
         rooms = season.get("rooms") or []
         for i, rm in enumerate(rooms):
